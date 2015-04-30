@@ -1,4 +1,4 @@
-// Copyright (c) 2013 GitHub, Inc. All rights reserved.
+// Copyright (c) 2013 GitHub, Inc.
 // Use of this source code is governed by the MIT license that can be
 // found in the LICENSE file.
 
@@ -75,6 +75,9 @@ NSAlert* CreateNSAlert(NativeWindow* parent_window,
 
   for (size_t i = 0; i < buttons.size(); ++i) {
     NSString* title = base::SysUTF8ToNSString(buttons[i]);
+    // An empty title causes crash on OS X.
+    if (buttons[i].empty())
+      title = @"(empty)";
     NSButton* button = [alert addButtonWithTitle:title];
     [button setTag:i];
   }
@@ -93,13 +96,14 @@ int ShowMessageBox(NativeWindow* parent_window,
                    const std::vector<std::string>& buttons,
                    const std::string& title,
                    const std::string& message,
-                   const std::string& detail) {
+                   const std::string& detail,
+                   const gfx::ImageSkia& icon) {
   NSAlert* alert = CreateNSAlert(
       parent_window, type, buttons, title, message, detail);
 
   // Use runModal for synchronous alert without parent, since we don't have a
   // window to wait for.
-  if (!parent_window)
+  if (!parent_window || !parent_window->GetNativeWindow())
     return [[alert autorelease] runModal];
 
   int ret_code = -1;
@@ -124,6 +128,7 @@ void ShowMessageBox(NativeWindow* parent_window,
                     const std::string& title,
                     const std::string& message,
                     const std::string& detail,
+                    const gfx::ImageSkia& icon,
                     const MessageBoxCallback& callback) {
   NSAlert* alert = CreateNSAlert(
       parent_window, type, buttons, title, message, detail);
@@ -136,6 +141,15 @@ void ShowMessageBox(NativeWindow* parent_window,
                     modalDelegate:delegate
                    didEndSelector:@selector(alertDidEnd:returnCode:contextInfo:)
                       contextInfo:nil];
+}
+
+void ShowErrorBox(const base::string16& title, const base::string16& content) {
+  NSAlert* alert = [[NSAlert alloc] init];
+  [alert setMessageText:base::SysUTF16ToNSString(title)];
+  [alert setInformativeText:base::SysUTF16ToNSString(content)];
+  [alert setAlertStyle:NSWarningAlertStyle];
+  [alert runModal];
+  [alert release];
 }
 
 }  // namespace atom

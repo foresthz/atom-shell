@@ -1,4 +1,4 @@
-// Copyright (c) 2013 GitHub, Inc. All rights reserved.
+// Copyright (c) 2013 GitHub, Inc.
 // Use of this source code is governed by the MIT license that can be
 // found in the LICENSE file.
 
@@ -87,11 +87,11 @@ ui::KeyboardCode KeyboardCodeFromCharCode(char c, bool* shifted) {
 
 bool StringToAccelerator(const std::string& description,
                          ui::Accelerator* accelerator) {
-  if (!IsStringASCII(description)) {
+  if (!base::IsStringASCII(description)) {
     LOG(ERROR) << "The accelerator string can only contain ASCII characters";
     return false;
   }
-  std::string shortcut(StringToLowerASCII(description));
+  std::string shortcut(base::StringToLowerASCII(description));
 
   std::vector<std::string> tokens;
   base::SplitString(shortcut, '+', &tokens);
@@ -121,6 +121,9 @@ bool StringToAccelerator(const std::string& description,
       modifiers |= ui::EF_ALT_DOWN;
     } else if (tokens[i] == "shift") {
       modifiers |= ui::EF_SHIFT_DOWN;
+    } else if (tokens[i] == "plus") {
+      modifiers |= ui::EF_SHIFT_DOWN;
+      key = ui::VKEY_OEM_PLUS;
     } else if (tokens[i] == "tab") {
       key = ui::VKEY_TAB;
     } else if (tokens[i] == "space") {

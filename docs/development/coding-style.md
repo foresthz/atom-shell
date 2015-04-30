@@ -18,11 +18,11 @@ Guide](https://github.com/styleguide/javascript), and also following rules:
 * File names should be concatenated with `-` instead of `_`, e.g.
   `file-name.coffee` rather than `file_name.coffee`, because in
   [github/atom](https://github.com/github/atom) module names are usually in
-  the `module-name` form, this rule only apply to `.coffee` files.
+  the `module-name` form, this rule only applies to `.coffee` files.
 
 ## API Names
 
 When creating a new API, we should prefer getters and setters instead of
 jQuery's one-function style, for example, `.getText()` and `.setText(text)`
 are preferred to `.text([text])`. There is a
-[discussion](https://github.com/atom/atom-shell/issues/46) of this.
+[discussion](https://github.com/atom/electron/issues/46) of this.

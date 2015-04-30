@@ -1,4 +1,4 @@
-// Copyright (c) 2014 GitHub, Inc. All rights reserved.
+// Copyright (c) 2014 GitHub, Inc.
 // Use of this source code is governed by the MIT license that can be
 // found in the LICENSE file.
 
@@ -22,10 +22,12 @@ class TrayIconCocoa : public TrayIcon {
   TrayIconCocoa();
   virtual ~TrayIconCocoa();
 
-  virtual void SetImage(const gfx::ImageSkia& image) OVERRIDE;
-  virtual void SetPressedImage(const gfx::ImageSkia& image) OVERRIDE;
-  virtual void SetToolTip(const std::string& tool_tip) OVERRIDE;
-  virtual void SetContextMenu(ui::SimpleMenuModel* menu_model) OVERRIDE;
+  void SetImage(const gfx::Image& image) override;
+  void SetPressedImage(const gfx::Image& image) override;
+  void SetToolTip(const std::string& tool_tip) override;
+  void SetTitle(const std::string& title) override;
+  void SetHighlightMode(bool highlight) override;
+  void SetContextMenu(ui::SimpleMenuModel* menu_model) override;
 
  private:
   base::scoped_nsobject<NSStatusItem> item_;

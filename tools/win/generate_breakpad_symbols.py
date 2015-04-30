@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (c) 2013 GitHub, Inc. All rights reserved.
+# Copyright (c) 2013 GitHub, Inc.
 # Copyright (c) 2013 The Chromium Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -47,11 +47,6 @@ def mkdir_p(path):
     else: raise
 
 
-def RegisterRequiredDll():
-  register = os.path.join(os.path.dirname(__file__), 'register_msdia80_dll.js')
-  subprocess.check_call(['node.exe', register]);
-
-
 def GenerateSymbols(options, binaries):
   """Dumps the symbols of binary and places them in the given directory."""
 
@@ -67,7 +62,7 @@ def GenerateSymbols(options, binaries):
           print "Generating symbols for %s" % binary
 
       syms = GetCommandOutput([DUMP_SYMS, binary])
-      module_line = re.match("MODULE [^ ]+ [^ ]+ ([0-9A-F]+) (.*)\r\n", syms)
+      module_line = re.match("MODULE [^ ]+ [^ ]+ ([0-9A-Fa-f]+) (.*)\r\n", syms)
       if module_line == None:
         with print_lock:
           print "Failed to get symbols for %s" % binary
@@ -124,7 +119,6 @@ def main():
     pdbs += glob.glob(os.path.join(directory, '*.exe.pdb'))
     pdbs += glob.glob(os.path.join(directory, '*.dll.pdb'))
 
-  RegisterRequiredDll();
   GenerateSymbols(options, pdbs)
 
   return 0

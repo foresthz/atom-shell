@@ -1,4 +1,4 @@
-// Copyright (c) 2013 GitHub, Inc. All rights reserved.
+// Copyright (c) 2013 GitHub, Inc.
 // Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by the MIT license that can be
 // found in the LICENSE file.
@@ -38,6 +38,9 @@ class MenuModel;
 // Builds a NSMenu from the pre-built model (must not be nil). Changes made
 // to the contents of the model after calling this will not be noticed.
 - (id)initWithModel:(ui::MenuModel*)model;
+
+// Populate current NSMenu with |model|.
+- (void)populateWithModel:(ui::MenuModel*)model;
 
 // Programmatically close the constructed menu.
 - (void)cancel;

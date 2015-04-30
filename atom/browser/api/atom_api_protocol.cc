@@ -1,17 +1,15 @@
-// Copyright (c) 2013 GitHub, Inc. All rights reserved.
+// Copyright (c) 2013 GitHub, Inc.
 // Use of this source code is governed by the MIT license that can be
 // found in the LICENSE file.
 
 #include "atom/browser/api/atom_api_protocol.h"
 
-#include "base/stl_util.h"
 #include "atom/browser/atom_browser_context.h"
 #include "atom/browser/net/adapter_request_job.h"
-#include "atom/browser/net/atom_url_request_context_getter.h"
 #include "atom/browser/net/atom_url_request_job_factory.h"
 #include "atom/common/native_mate_converters/file_path_converter.h"
-#include "atom/common/native_mate_converters/function_converter.h"
 #include "content/public/browser/browser_thread.h"
+#include "native_mate/callback.h"
 #include "native_mate/dictionary.h"
 #include "net/url_request/url_request_context.h"
 
@@ -55,11 +53,12 @@ class CustomProtocolRequestJob : public AdapterRequestJob {
   }
 
   // AdapterRequestJob:
-  virtual void GetJobTypeInUI() OVERRIDE {
+  void GetJobTypeInUI() override {
     DCHECK(BrowserThread::CurrentlyOn(BrowserThread::UI));
 
-    v8::Locker locker(node_isolate);
-    v8::HandleScope handle_scope(node_isolate);
+    v8::Isolate* isolate = v8::Isolate::GetCurrent();
+    v8::Locker locker(isolate);
+    v8::HandleScope handle_scope(isolate);
 
     // Call the JS handler.
     Protocol::JsProtocolHandler callback =
@@ -75,7 +74,7 @@ class CustomProtocolRequestJob : public AdapterRequestJob {
       return;
     } else if (result->IsObject()) {
       v8::Handle<v8::Object> obj = result->ToObject();
-      mate::Dictionary dict(node_isolate, obj);
+      mate::Dictionary dict(isolate, obj);
       std::string name = mate::V8ToString(obj->GetConstructorName());
       if (name == "RequestStringJob") {
         std::string mime_type, charset, data;
@@ -86,6 +85,17 @@ class CustomProtocolRequestJob : public AdapterRequestJob {
         BrowserThread::PostTask(BrowserThread::IO, FROM_HERE,
             base::Bind(&AdapterRequestJob::CreateStringJobAndStart,
                        GetWeakPtr(), mime_type, charset, data));
+        return;
+      } else if (name == "RequestBufferJob") {
+        std::string mime_type, encoding;
+        v8::Handle<v8::Value> buffer;
+        dict.Get("mimeType", &mime_type);
+        dict.Get("encoding", &encoding);
+        dict.Get("data", &buffer);
+
+        BrowserThread::PostTask(BrowserThread::IO, FROM_HERE,
+            base::Bind(&AdapterRequestJob::CreateBufferJobAndStart,
+                       GetWeakPtr(), mime_type, encoding, buffer->ToObject()));
         return;
       } else if (name == "RequestFileJob") {
         base::FilePath path;
@@ -129,9 +139,9 @@ class CustomProtocolHandler : public ProtocolHandler {
       : registry_(registry), protocol_handler_(protocol_handler) {
   }
 
-  virtual net::URLRequestJob* MaybeCreateJob(
+  net::URLRequestJob* MaybeCreateJob(
       net::URLRequest* request,
-      net::NetworkDelegate* network_delegate) const OVERRIDE {
+      net::NetworkDelegate* network_delegate) const override {
     return new CustomProtocolRequestJob(registry_, protocol_handler_.get(),
                                         request, network_delegate);
   }
@@ -151,8 +161,9 @@ class CustomProtocolHandler : public ProtocolHandler {
 
 }  // namespace
 
-Protocol::Protocol() : job_factory_(
-    AtomBrowserContext::Get()->url_request_context_getter()->job_factory()) {
+Protocol::Protocol()
+    : job_factory_(AtomBrowserContext::Get()->job_factory()) {
+  CHECK(job_factory_);
 }
 
 Protocol::JsProtocolHandler Protocol::GetProtocolHandler(
@@ -305,9 +316,7 @@ void Protocol::UninterceptProtocolInIO(const std::string& scheme) {
 
 void Protocol::EmitEventInUI(const std::string& event,
                              const std::string& parameter) {
-  base::ListValue args;
-  args.AppendString(parameter);
-  Emit(event, args);
+  Emit(event, parameter);
 }
 
 // static
@@ -321,16 +330,13 @@ mate::Handle<Protocol> Protocol::Create(v8::Isolate* isolate) {
 
 namespace {
 
-void Initialize(v8::Handle<v8::Object> exports) {
-  // Make sure the job factory has been created.
-  atom::AtomBrowserContext::Get()->url_request_context_getter()->
-      GetURLRequestContext();
-
-  v8::Isolate* isolate = v8::Isolate::GetCurrent();
+void Initialize(v8::Handle<v8::Object> exports, v8::Handle<v8::Value> unused,
+                v8::Handle<v8::Context> context, void* priv) {
+  v8::Isolate* isolate = context->GetIsolate();
   mate::Dictionary dict(isolate, exports);
   dict.Set("protocol", atom::api::Protocol::Create(isolate));
 }
 
 }  // namespace
 
-NODE_MODULE(atom_browser_protocol, Initialize)
+NODE_MODULE_CONTEXT_AWARE_BUILTIN(atom_browser_protocol, Initialize)

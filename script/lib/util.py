@@ -4,6 +4,7 @@ import atexit
 import contextlib
 import errno
 import shutil
+import ssl
 import subprocess
 import sys
 import tarfile
@@ -12,6 +13,7 @@ import urllib2
 import os
 import zipfile
 
+from config import is_verbose_mode
 
 def tempdir(prefix=''):
   directory = tempfile.mkdtemp(prefix=prefix)
@@ -29,8 +31,24 @@ def scoped_cwd(path):
     os.chdir(cwd)
 
 
+@contextlib.contextmanager
+def scoped_env(key, value):
+  origin = ''
+  if key in os.environ:
+    origin = os.environ[key]
+  os.environ[key] = value
+  try:
+    yield
+  finally:
+    os.environ[key] = origin
+
+
 def download(text, url, path):
-  with open(path, 'w') as local_file:
+  safe_mkdir(os.path.dirname(path))
+  with open(path, 'wb') as local_file:
+    if hasattr(ssl, '_create_unverified_context'):
+      ssl._create_default_https_context = ssl._create_unverified_context
+
     web_file = urllib2.urlopen(url)
     file_size = int(web_file.info().getheaders("Content-Length")[0])
     downloaded_size = 0
@@ -55,6 +73,7 @@ def download(text, url, path):
       print "%s done." % (text)
     else:
       print
+  return path
 
 
 def extract_tarball(tarball_path, member, destination):
@@ -110,13 +129,70 @@ def safe_mkdir(path):
       raise
 
 
-def execute(argv):
+def execute(argv, env=os.environ):
+  if is_verbose_mode():
+    print ' '.join(argv)
   try:
-    return subprocess.check_output(argv, stderr=subprocess.STDOUT)
+    output = subprocess.check_output(argv, stderr=subprocess.STDOUT, env=env)
+    if is_verbose_mode():
+      print output
+    return output
   except subprocess.CalledProcessError as e:
     print e.output
     raise e
 
 
+def execute_stdout(argv, env=os.environ):
+  if is_verbose_mode():
+    print ' '.join(argv)
+    try:
+      subprocess.check_call(argv, env=env)
+    except subprocess.CalledProcessError as e:
+      print e.output
+      raise e
+  else:
+    execute(argv, env)
+
+
+def atom_gyp():
+  SOURCE_ROOT = os.path.abspath(os.path.join(__file__, '..', '..', '..'))
+  gyp = os.path.join(SOURCE_ROOT, 'atom.gyp')
+  with open(gyp) as f:
+    obj = eval(f.read());
+    return obj['variables']
+
+
 def get_atom_shell_version():
-  return subprocess.check_output(['git', 'describe', '--tags']).strip()
+  return 'v' + atom_gyp()['version%']
+
+
+def get_chromedriver_version():
+  SOURCE_ROOT = os.path.abspath(os.path.join(__file__, '..', '..', '..'))
+  chromedriver = os.path.join(SOURCE_ROOT, 'dist', 'chromedriver')
+  output = subprocess.check_output([chromedriver, '-v']).strip()
+  return 'v' + output[13:output.rfind(' ')]
+
+
+def parse_version(version):
+  if version[0] == 'v':
+    version = version[1:]
+
+  vs = version.split('.')
+  if len(vs) > 4:
+    return vs[0:4]
+  else:
+    return vs + ['0'] * (4 - len(vs))
+
+
+def s3put(bucket, access_key, secret_key, prefix, key_prefix, files):
+  args = [
+    's3put',
+    '--bucket', bucket,
+    '--access_key', access_key,
+    '--secret_key', secret_key,
+    '--prefix', prefix,
+    '--key_prefix', key_prefix,
+    '--grant', 'public-read'
+  ] + files
+
+  execute(args)

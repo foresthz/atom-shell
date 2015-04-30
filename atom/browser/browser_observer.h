@@ -1,4 +1,4 @@
-// Copyright (c) 2013 GitHub, Inc. All rights reserved.
+// Copyright (c) 2013 GitHub, Inc.
 // Use of this source code is governed by the MIT license that can be
 // found in the LICENSE file.
 
@@ -11,12 +11,18 @@ namespace atom {
 
 class BrowserObserver {
  public:
+  // The browser is about to close all windows.
+  virtual void OnBeforeQuit(bool* prevent_default) {}
+
   // The browser has closed all windows and will quit.
   virtual void OnWillQuit(bool* prevent_default) {}
 
   // The browser has closed all windows. If the browser is quiting, then this
   // method will not be called, instead it will call OnWillQuit.
   virtual void OnWindowAllClosed() {}
+
+  // The browser is quitting.
+  virtual void OnQuit() {}
 
   // The browser has opened a file by double clicking in Finder or dragging the
   // file to the Dock icon. (OS X only)

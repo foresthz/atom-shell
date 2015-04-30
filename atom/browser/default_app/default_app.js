@@ -12,30 +12,37 @@ app.on('window-all-closed', function() {
 });
 
 app.on('ready', function() {
-  app.commandLine.appendSwitch('js-flags', '--harmony_collections');
-
   mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
     resizable: false,
+    'auto-hide-menu-bar': true,
     'use-content-size': true,
   });
   mainWindow.loadUrl('file://' + __dirname + '/index.html');
+  mainWindow.focus();
 
   if (process.platform == 'darwin') {
     var template = [
       {
-        label: 'Atom Shell',
+        label: 'Electron',
         submenu: [
           {
-            label: 'About Atom Shell',
+            label: 'About Electron',
             selector: 'orderFrontStandardAboutPanel:'
           },
           {
             type: 'separator'
           },
           {
-            label: 'Hide Atom Shell',
+            label: 'Services',
+            submenu: []
+          },
+          {
+            type: 'separator'
+          },
+          {
+            label: 'Hide Electron',
             accelerator: 'Command+H',
             selector: 'hide:'
           },
@@ -105,11 +112,12 @@ app.on('ready', function() {
             click: function() { mainWindow.restart(); }
           },
           {
-            label: 'Enter Fullscreen',
-            click: function() { mainWindow.setFullScreen(true); }
+            label: 'Toggle Full Screen',
+            accelerator: 'Ctrl+Command+F',
+            click: function() { mainWindow.setFullScreen(!mainWindow.isFullScreen()); }
           },
           {
-            label: 'Toggle DevTools',
+            label: 'Toggle Developer Tools',
             accelerator: 'Alt+Command+I',
             click: function() { mainWindow.toggleDevTools(); }
           },
@@ -137,6 +145,27 @@ app.on('ready', function() {
           },
         ]
       },
+      {
+        label: 'Help',
+        submenu: [
+          {
+            label: 'Learn More',
+            click: function() { require('shell').openExternal('http://electron.atom.io') }
+          },
+          {
+            label: 'Documentation',
+            click: function() { require('shell').openExternal('https://github.com/atom/electron/tree/master/docs#readme') }
+          },
+          {
+            label: 'Community Discussions',
+            click: function() { require('shell').openExternal('https://discuss.atom.io/c/electron') }
+          },
+          {
+            label: 'Search Issues',
+            click: function() { require('shell').openExternal('https://github.com/atom/electron/issues') }
+          }
+        ]
+      }
     ];
 
     menu = Menu.buildFromTemplate(template);
@@ -144,38 +173,60 @@ app.on('ready', function() {
   } else {
     var template = [
       {
-        label: 'File',
+        label: '&File',
         submenu: [
           {
-            label: 'Open',
+            label: '&Open',
             accelerator: 'Ctrl+O',
           },
           {
-            label: 'Close',
+            label: '&Close',
             accelerator: 'Ctrl+W',
             click: function() { mainWindow.close(); }
           },
         ]
       },
       {
-        label: 'View',
+        label: '&View',
         submenu: [
           {
-            label: 'Reload',
+            label: '&Reload',
             accelerator: 'Ctrl+R',
             click: function() { mainWindow.restart(); }
           },
           {
-            label: 'Enter Fullscreen',
-            click: function() { mainWindow.setFullScreen(true); }
+            label: 'Toggle &Full Screen',
+            accelerator: 'F11',
+            click: function() { mainWindow.setFullScreen(!mainWindow.isFullScreen()); }
           },
           {
-            label: 'Toggle DevTools',
+            label: 'Toggle &Developer Tools',
             accelerator: 'Alt+Ctrl+I',
             click: function() { mainWindow.toggleDevTools(); }
           },
         ]
       },
+      {
+        label: 'Help',
+        submenu: [
+          {
+            label: 'Learn More',
+            click: function() { require('shell').openExternal('http://electron.atom.io') }
+          },
+          {
+            label: 'Documentation',
+            click: function() { require('shell').openExternal('https://github.com/atom/electron/tree/master/docs#readme') }
+          },
+          {
+            label: 'Community Discussions',
+            click: function() { require('shell').openExternal('https://discuss.atom.io/c/electron') }
+          },
+          {
+            label: 'Search Issues',
+            click: function() { require('shell').openExternal('https://github.com/atom/electron/issues') }
+          }
+        ]
+      }
     ];
 
     menu = Menu.buildFromTemplate(template);

@@ -1,4 +1,4 @@
-// Copyright (c) 2014 GitHub, Inc. All rights reserved.
+// Copyright (c) 2014 GitHub, Inc.
 // Use of this source code is governed by the MIT license that can be
 // found in the LICENSE file.
 
@@ -12,7 +12,12 @@
 #include "base/memory/scoped_ptr.h"
 
 namespace gfx {
-class ImageSkia;
+class Image;
+}
+
+namespace mate {
+class Arguments;
+class Dictionary;
 }
 
 namespace atom {
@@ -26,24 +31,34 @@ class Menu;
 class Tray : public mate::EventEmitter,
              public TrayIconObserver {
  public:
-  static mate::Wrappable* New(const gfx::ImageSkia& image);
+  static mate::Wrappable* New(const gfx::Image& image);
 
   static void BuildPrototype(v8::Isolate* isolate,
                              v8::Handle<v8::ObjectTemplate> prototype);
 
  protected:
-  explicit Tray(const gfx::ImageSkia& image);
+  explicit Tray(const gfx::Image& image);
   virtual ~Tray();
 
-  // TrayIcon implementations:
-  virtual void OnClicked() OVERRIDE;
+  // TrayIconObserver:
+  void OnClicked() override;
+  void OnDoubleClicked() override;
+  void OnBalloonShow() override;
+  void OnBalloonClicked() override;
+  void OnBalloonClosed() override;
 
-  void SetImage(const gfx::ImageSkia& image);
-  void SetPressedImage(const gfx::ImageSkia& image);
-  void SetToolTip(const std::string& tool_tip);
-  void SetContextMenu(Menu* menu);
+  void Destroy();
+  void SetImage(mate::Arguments* args, const gfx::Image& image);
+  void SetPressedImage(mate::Arguments* args, const gfx::Image& image);
+  void SetToolTip(mate::Arguments* args, const std::string& tool_tip);
+  void SetTitle(mate::Arguments* args, const std::string& title);
+  void SetHighlightMode(mate::Arguments* args, bool highlight);
+  void DisplayBalloon(mate::Arguments* args, const mate::Dictionary& options);
+  void SetContextMenu(mate::Arguments* args, Menu* menu);
 
  private:
+  bool CheckTrayLife(mate::Arguments* args);
+
   scoped_ptr<TrayIcon> tray_icon_;
 
   DISALLOW_COPY_AND_ASSIGN(Tray);

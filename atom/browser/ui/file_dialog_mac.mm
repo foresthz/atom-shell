@@ -1,4 +1,4 @@
-// Copyright (c) 2013 GitHub, Inc. All rights reserved.
+// Copyright (c) 2013 GitHub, Inc.
 // Use of this source code is governed by the MIT license that can be
 // found in the LICENSE file.
 
@@ -8,16 +8,47 @@
 #import <CoreServices/CoreServices.h>
 
 #include "atom/browser/native_window.h"
-#include "base/file_util.h"
+#include "base/files/file_util.h"
+#include "base/mac/foundation_util.h"
+#include "base/mac/mac_util.h"
+#include "base/mac/scoped_cftyperef.h"
 #include "base/strings/sys_string_conversions.h"
 
 namespace file_dialog {
 
 namespace {
 
+CFStringRef CreateUTIFromExtension(const std::string& ext) {
+  base::ScopedCFTypeRef<CFStringRef> ext_cf(base::SysUTF8ToCFStringRef(ext));
+  return UTTypeCreatePreferredIdentifierForTag(
+      kUTTagClassFilenameExtension, ext_cf.get(), NULL);
+}
+
+void SetAllowedFileTypes(NSSavePanel* dialog, const Filters& filters) {
+  NSMutableSet* file_type_set = [NSMutableSet set];
+  for (size_t i = 0; i < filters.size(); ++i) {
+    const Filter& filter = filters[i];
+    for (size_t j = 0; j < filter.second.size(); ++j) {
+      base::ScopedCFTypeRef<CFStringRef> uti(
+          CreateUTIFromExtension(filter.second[j]));
+      [file_type_set addObject:base::mac::CFToNSCast(uti.get())];
+
+      // Always allow the extension itself, in case the UTI doesn't map
+      // back to the original extension correctly. This occurs with dynamic
+      // UTIs on 10.7 and 10.8.
+      // See http://crbug.com/148840, http://openradar.me/12316273
+      base::ScopedCFTypeRef<CFStringRef> ext_cf(
+          base::SysUTF8ToCFStringRef(filter.second[j]));
+      [file_type_set addObject:base::mac::CFToNSCast(ext_cf.get())];
+    }
+  }
+  [dialog setAllowedFileTypes:[file_type_set allObjects]];
+}
+
 void SetupDialog(NSSavePanel* dialog,
                  const std::string& title,
-                 const base::FilePath& default_path) {
+                 const base::FilePath& default_path,
+                 const Filters& filters) {
   if (!title.empty())
     [dialog setTitle:base::SysUTF8ToNSString(title)];
 
@@ -39,7 +70,10 @@ void SetupDialog(NSSavePanel* dialog,
     [dialog setNameFieldStringValue:default_filename];
 
   [dialog setCanSelectHiddenExtension:YES];
-  [dialog setAllowsOtherFileTypes:YES];
+  if (filters.empty())
+    [dialog setAllowsOtherFileTypes:YES];
+  else
+    SetAllowedFileTypes(dialog, filters);
 }
 
 void SetupDialogForProperties(NSOpenPanel* dialog, int properties) {
@@ -55,7 +89,7 @@ void SetupDialogForProperties(NSOpenPanel* dialog, int properties) {
 // Run modal dialog with parent window and return user's choice.
 int RunModalDialog(NSSavePanel* dialog, atom::NativeWindow* parent_window) {
   __block int chosen = NSFileHandlingPanelCancelButton;
-  if (parent_window == NULL) {
+  if (!parent_window || !parent_window->GetNativeWindow()) {
     chosen = [dialog runModal];
   } else {
     NSWindow* window = parent_window->GetNativeWindow();
@@ -83,12 +117,13 @@ void ReadDialogPaths(NSOpenPanel* dialog, std::vector<base::FilePath>* paths) {
 bool ShowOpenDialog(atom::NativeWindow* parent_window,
                     const std::string& title,
                     const base::FilePath& default_path,
+                    const Filters& filters,
                     int properties,
                     std::vector<base::FilePath>* paths) {
   DCHECK(paths);
   NSOpenPanel* dialog = [NSOpenPanel openPanel];
 
-  SetupDialog(dialog, title, default_path);
+  SetupDialog(dialog, title, default_path, filters);
   SetupDialogForProperties(dialog, properties);
 
   int chosen = RunModalDialog(dialog, parent_window);
@@ -102,11 +137,12 @@ bool ShowOpenDialog(atom::NativeWindow* parent_window,
 void ShowOpenDialog(atom::NativeWindow* parent_window,
                     const std::string& title,
                     const base::FilePath& default_path,
+                    const Filters& filters,
                     int properties,
                     const OpenDialogCallback& c) {
   NSOpenPanel* dialog = [NSOpenPanel openPanel];
 
-  SetupDialog(dialog, title, default_path);
+  SetupDialog(dialog, title, default_path, filters);
   SetupDialogForProperties(dialog, properties);
 
   // Duplicate the callback object here since c is a reference and gcd would
@@ -129,11 +165,12 @@ void ShowOpenDialog(atom::NativeWindow* parent_window,
 bool ShowSaveDialog(atom::NativeWindow* parent_window,
                     const std::string& title,
                     const base::FilePath& default_path,
+                    const Filters& filters,
                     base::FilePath* path) {
   DCHECK(path);
   NSSavePanel* dialog = [NSSavePanel savePanel];
 
-  SetupDialog(dialog, title, default_path);
+  SetupDialog(dialog, title, default_path, filters);
 
   int chosen = RunModalDialog(dialog, parent_window);
   if (chosen == NSFileHandlingPanelCancelButton || ![[dialog URL] isFileURL])
@@ -146,10 +183,11 @@ bool ShowSaveDialog(atom::NativeWindow* parent_window,
 void ShowSaveDialog(atom::NativeWindow* parent_window,
                     const std::string& title,
                     const base::FilePath& default_path,
+                    const Filters& filters,
                     const SaveDialogCallback& c) {
   NSSavePanel* dialog = [NSSavePanel savePanel];
 
-  SetupDialog(dialog, title, default_path);
+  SetupDialog(dialog, title, default_path, filters);
 
   __block SaveDialogCallback callback = c;
 

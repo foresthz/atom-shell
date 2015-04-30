@@ -1,4 +1,4 @@
-// Copyright (c) 2013 GitHub, Inc. All rights reserved.
+// Copyright (c) 2013 GitHub, Inc.
 // Copyright (c) 2011 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by the MIT license that can be
 // found in the LICENSE file.
@@ -40,13 +40,20 @@ class AtomURLRequestJobFactory : public net::URLRequestJobFactory {
   bool HasProtocolHandler(const std::string& scheme) const;
 
   // URLRequestJobFactory implementation
-  virtual net::URLRequestJob* MaybeCreateJobWithProtocolHandler(
+  net::URLRequestJob* MaybeCreateJobWithProtocolHandler(
       const std::string& scheme,
       net::URLRequest* request,
-      net::NetworkDelegate* network_delegate) const OVERRIDE;
-  virtual bool IsHandledProtocol(const std::string& scheme) const OVERRIDE;
-  virtual bool IsHandledURL(const GURL& url) const OVERRIDE;
-  virtual bool IsSafeRedirectTarget(const GURL& location) const OVERRIDE;
+      net::NetworkDelegate* network_delegate) const override;
+  net::URLRequestJob* MaybeInterceptRedirect(
+      net::URLRequest* request,
+      net::NetworkDelegate* network_delegate,
+      const GURL& location) const override;
+  net::URLRequestJob* MaybeInterceptResponse(
+      net::URLRequest* request,
+      net::NetworkDelegate* network_delegate) const override;
+  bool IsHandledProtocol(const std::string& scheme) const override;
+  bool IsHandledURL(const GURL& url) const override;
+  bool IsSafeRedirectTarget(const GURL& location) const override;
 
  private:
   typedef std::map<std::string, ProtocolHandler*> ProtocolHandlerMap;

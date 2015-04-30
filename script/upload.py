@@ -2,29 +2,38 @@
 
 import argparse
 import errno
-import glob
 import os
 import subprocess
 import sys
 import tempfile
 
-from lib.config import DIST_ARCH, NODE_VERSION, TARGET_PLATFORM
-from lib.util import get_atom_shell_version, scoped_cwd, safe_mkdir, execute
+from lib.config import PLATFORM, get_target_arch
+from lib.util import atom_gyp, execute, get_atom_shell_version, parse_version, \
+                     get_chromedriver_version, scoped_cwd
 from lib.github import GitHub
 
 
-ATOM_SHELL_REPO = 'atom/atom-shell'
+ATOM_SHELL_REPO = 'atom/electron'
 ATOM_SHELL_VERSION = get_atom_shell_version()
+CHROMEDRIVER_VERSION = get_chromedriver_version()
+
+PROJECT_NAME = atom_gyp()['project_name%']
+PRODUCT_NAME = atom_gyp()['product_name%']
 
 SOURCE_ROOT = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
-OUT_DIR = os.path.join(SOURCE_ROOT, 'out', 'Release')
+OUT_DIR = os.path.join(SOURCE_ROOT, 'out', 'R')
 DIST_DIR = os.path.join(SOURCE_ROOT, 'dist')
-DIST_NAME = 'atom-shell-{0}-{1}-{2}.zip'.format(ATOM_SHELL_VERSION,
-                                                TARGET_PLATFORM,
-                                                DIST_ARCH)
-SYMBOLS_NAME = 'atom-shell-{0}-{1}-{2}-symbols.zip'.format(ATOM_SHELL_VERSION,
-                                                           TARGET_PLATFORM,
-                                                           DIST_ARCH)
+DIST_NAME = '{0}-{1}-{2}-{3}.zip'.format(PROJECT_NAME,
+                                         ATOM_SHELL_VERSION,
+                                         PLATFORM,
+                                         get_target_arch())
+SYMBOLS_NAME = '{0}-{1}-{2}-{3}-symbols.zip'.format(PROJECT_NAME,
+                                                    ATOM_SHELL_VERSION,
+                                                    PLATFORM,
+                                                    get_target_arch())
+CHROMEDRIVER_NAME = 'chromedriver-{0}-{1}-{2}.zip'.format(CHROMEDRIVER_VERSION,
+                                                          PLATFORM,
+                                                          get_target_arch())
 
 
 def main():
@@ -42,17 +51,43 @@ def main():
     sys.stderr.flush()
     return 1
 
-  # Upload atom-shell with GitHub Releases API.
   github = GitHub(auth_token())
   release_id = create_or_get_release_draft(github, args.version)
-  upload_atom_shell(github, release_id, os.path.join(DIST_DIR, DIST_NAME))
-  upload_atom_shell(github, release_id, os.path.join(DIST_DIR, SYMBOLS_NAME))
+
   if args.publish_release:
+    # Upload the SHASUMS.txt.
+    execute([sys.executable,
+             os.path.join(SOURCE_ROOT, 'script', 'upload-checksums.py'),
+             '-v', ATOM_SHELL_VERSION])
+
+    # Upload the index.json.
+    execute([sys.executable,
+             os.path.join(SOURCE_ROOT, 'script', 'upload-index-json.py')])
+
+    # Press the publish button.
     publish_release(github, release_id)
 
-  # Upload node's headers to S3.
-  bucket, access_key, secret_key = s3_config()
-  upload_node(bucket, access_key, secret_key, NODE_VERSION)
+    # Do not upload other files when passed "-p".
+    return
+
+  # Upload atom-shell with GitHub Releases API.
+  upload_atom_shell(github, release_id, os.path.join(DIST_DIR, DIST_NAME))
+  upload_atom_shell(github, release_id, os.path.join(DIST_DIR, SYMBOLS_NAME))
+
+  # Upload chromedriver for minor version update.
+  if parse_version(args.version)[2] == '0':
+    upload_atom_shell(github, release_id,
+                      os.path.join(DIST_DIR, CHROMEDRIVER_NAME))
+
+  if PLATFORM == 'win32':
+    # Upload PDBs to Windows symbol server.
+    execute([sys.executable,
+             os.path.join(SOURCE_ROOT, 'script', 'upload-windows-pdb.py')])
+
+    # Upload node headers.
+    execute([sys.executable,
+             os.path.join(SOURCE_ROOT, 'script', 'upload-node-headers.py'),
+             '-v', ATOM_SHELL_VERSION])
 
 
 def parse_args():
@@ -66,13 +101,15 @@ def parse_args():
 
 
 def get_atom_shell_build_version():
-  if TARGET_PLATFORM == 'darwin':
-    atom_shell = os.path.join(SOURCE_ROOT, 'out', 'Release', 'Atom.app',
-                              'Contents', 'MacOS', 'Atom')
-  elif TARGET_PLATFORM == 'win32':
-    atom_shell = os.path.join(SOURCE_ROOT, 'out', 'Release', 'atom.exe')
+  if PLATFORM == 'darwin':
+    atom_shell = os.path.join(SOURCE_ROOT, 'out', 'R',
+                              '{0}.app'.format(PRODUCT_NAME), 'Contents',
+                              'MacOS', PRODUCT_NAME)
+  elif PLATFORM == 'win32':
+    atom_shell = os.path.join(SOURCE_ROOT, 'out', 'R',
+                              '{0}.exe'.format(PROJECT_NAME))
   else:
-    atom_shell = os.path.join(SOURCE_ROOT, 'out', 'Release', 'atom')
+    atom_shell = os.path.join(SOURCE_ROOT, 'out', 'R', PROJECT_NAME)
 
   return subprocess.check_output([atom_shell, '--version']).strip()
 
@@ -110,7 +147,7 @@ def get_text_with_editor(name):
   return text
 
 def create_or_get_release_draft(github, tag):
-  name = 'atom-shell %s' % tag
+  name = '{0} {1}'.format(PROJECT_NAME, tag)
   releases = github.repos(ATOM_SHELL_REPO).releases.get()
   for release in releases:
     # The untagged commit doesn't have a matching tag_name, so also check name.
@@ -121,7 +158,7 @@ def create_or_get_release_draft(github, tag):
 
 
 def create_release_draft(github, tag):
-  name = 'atom-shell %s' % tag
+  name = '{0} {1}'.format(PROJECT_NAME, tag)
   body = get_text_with_editor(name)
   if body == '':
     sys.stderr.write('Quit due to empty release note.\n')
@@ -145,67 +182,12 @@ def publish_release(github, release_id):
   github.repos(ATOM_SHELL_REPO).releases(release_id).patch(data=data)
 
 
-def upload_node(bucket, access_key, secret_key, version):
-  os.chdir(DIST_DIR)
-
-  s3put(bucket, access_key, secret_key, DIST_DIR,
-        'atom-shell/dist/{0}'.format(version), glob.glob('node-*.tar.gz'))
-
-  if TARGET_PLATFORM == 'win32':
-    # Generate the node.lib.
-    build = os.path.join(SOURCE_ROOT, 'script', 'build.py')
-    execute([sys.executable, build, '-c', 'Release', '-t', 'generate_node_lib'])
-
-    # Upload the 32bit node.lib.
-    node_lib = os.path.join(OUT_DIR, 'node.lib')
-    s3put(bucket, access_key, secret_key, OUT_DIR,
-          'atom-shell/dist/{0}'.format(version), [node_lib])
-
-    # Upload the fake 64bit node.lib.
-    touch_x64_node_lib()
-    node_lib = os.path.join(OUT_DIR, 'x64', 'node.lib')
-    s3put(bucket, access_key, secret_key, OUT_DIR,
-          'atom-shell/dist/{0}'.format(version), [node_lib])
-
-
 def auth_token():
   token = os.environ.get('ATOM_SHELL_GITHUB_TOKEN')
   message = ('Error: Please set the $ATOM_SHELL_GITHUB_TOKEN '
              'environment variable, which is your personal token')
   assert token, message
   return token
-
-
-def s3_config():
-  config = (os.environ.get('ATOM_SHELL_S3_BUCKET', ''),
-            os.environ.get('ATOM_SHELL_S3_ACCESS_KEY', ''),
-            os.environ.get('ATOM_SHELL_S3_SECRET_KEY', ''))
-  message = ('Error: Please set the $ATOM_SHELL_S3_BUCKET, '
-             '$ATOM_SHELL_S3_ACCESS_KEY, and '
-             '$ATOM_SHELL_S3_SECRET_KEY environment variables')
-  assert all(len(c) for c in config), message
-  return config
-
-
-def s3put(bucket, access_key, secret_key, prefix, key_prefix, files):
-  args = [
-    's3put',
-    '--bucket', bucket,
-    '--access_key', access_key,
-    '--secret_key', secret_key,
-    '--prefix', prefix,
-    '--key_prefix', key_prefix,
-    '--grant', 'public-read'
-  ] + files
-
-  execute(args)
-
-
-def touch_x64_node_lib():
-  x64_dir = os.path.join(OUT_DIR, 'x64')
-  safe_mkdir(x64_dir)
-  with open(os.path.join(x64_dir, 'node.lib'), 'w+') as node_lib:
-    node_lib.write('Invalid library')
 
 
 if __name__ == '__main__':

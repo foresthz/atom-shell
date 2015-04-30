@@ -1,4 +1,4 @@
-// Copyright (c) 2013 GitHub, Inc. All rights reserved.
+// Copyright (c) 2013 GitHub, Inc.
 // Use of this source code is governed by the MIT license that can be
 // found in the LICENSE file.
 
@@ -7,7 +7,7 @@
 #include "atom/common/crash_reporter/win/crash_service.h"
 #include "base/at_exit.h"
 #include "base/command_line.h"
-#include "base/file_util.h"
+#include "base/files/file_util.h"
 #include "base/logging.h"
 #include "base/strings/string_util.h"
 
@@ -23,11 +23,11 @@ const wchar_t kStandardLogFile[] = L"operation_log.txt";
 bool GetCrashServiceDirectory(const std::wstring& application_name,
                               base::FilePath* dir) {
   base::FilePath temp_dir;
-  if (!file_util::GetTempDir(&temp_dir))
+  if (!base::GetTempDir(&temp_dir))
     return false;
   temp_dir = temp_dir.Append(application_name + L" Crashes");
   if (!base::PathExists(temp_dir)) {
-    if (!file_util::CreateDirectory(temp_dir))
+    if (!base::CreateDirectory(temp_dir))
       return false;
   }
   *dir = temp_dir;
@@ -39,8 +39,8 @@ bool GetCrashServiceDirectory(const std::wstring& application_name,
 int Main(const wchar_t* cmd) {
   // Initialize all Chromium things.
   base::AtExitManager exit_manager;
-  CommandLine::Init(0, NULL);
-  CommandLine& cmd_line = *CommandLine::ForCurrentProcess();
+  base::CommandLine::Init(0, NULL);
+  base::CommandLine& cmd_line = *base::CommandLine::ForCurrentProcess();
 
   // Use the application's name as pipe name and output directory.
   if (!cmd_line.HasSwitch(kApplicationName)) {
@@ -68,12 +68,12 @@ int Main(const wchar_t* cmd) {
   VLOG(1) << "Session start. cmdline is [" << cmd << "]";
 
   // Setting the crash reporter.
-  string16 pipe_name = ReplaceStringPlaceholders(kPipeNameFormat,
+  base::string16 pipe_name = ReplaceStringPlaceholders(kPipeNameFormat,
                                                  application_name,
                                                  NULL);
   cmd_line.AppendSwitch("no-window");
   cmd_line.AppendSwitchASCII("max-reports", "128");
-  cmd_line.AppendSwitchASCII("reporter", "atom-shell-crash-service");
+  cmd_line.AppendSwitchASCII("reporter", ATOM_PROJECT_NAME "-crash-service");
   cmd_line.AppendSwitchNative("pipe-name", pipe_name);
 
   breakpad::CrashService crash_service;

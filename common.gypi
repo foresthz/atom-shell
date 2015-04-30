@@ -1,20 +1,14 @@
 {
+  'includes': [
+    'vendor/brightray/brightray.gypi',
+  ],
   'variables': {
-    'clang': 0,
-    'conditions': [
-      ['OS=="mac" or OS=="linux"', {
-        'clang': 1,
-      }],
-      ['OS=="win" and (MSVS_VERSION=="2012e" or MSVS_VERSION=="2010e")', {
-        'msvs_express': 1,
-        'windows_driver_kit_path%': 'C:/WinDDK/7600.16385.1',
-      },{
-        'msvs_express': 0,
-      }],
-    ],
+    # Required by breakpad.
+    'os_bsd': 0,
     # Reflects node's config.gypi.
     'component%': 'static_library',
     'python': 'python',
+    'openssl_no_asm': 1,
     'node_install_npm': 'false',
     'node_prefix': '',
     'node_shared_cares': 'false',
@@ -24,22 +18,27 @@
     'node_shared_v8': 'true',
     'node_shared_zlib': 'false',
     'node_tag': '',
-    'node_unsafe_optimizations': 0,
     'node_use_dtrace': 'false',
     'node_use_etw': 'false',
+    'node_use_mdb': 'false',
     'node_use_openssl': 'true',
     'node_use_perfctr': 'false',
-    'node_use_systemtap': 'false',
+    'uv_library': 'static_library',
+    'uv_parent_path': 'vendor/node/deps/uv',
+    'uv_use_dtrace': 'false',
     'v8_postmortem_support': 'false',
+    'v8_enable_i18n_support': 'false',
     # Required by Linux (empty for now, should support it in future).
     'sysroot': '',
   },
   # Settings to compile node under Windows.
   'target_defaults': {
     'target_conditions': [
-      ['_target_name in ["libuv", "http_parser", "cares", "openssl", "openssl-cli", "node_lib", "zlib"]', {
+      ['_target_name in ["libuv", "http_parser", "openssl", "cares", "node", "zlib"]', {
         'msvs_disabled_warnings': [
+          4703,  # potentially uninitialized local pointer variable 'req' used
           4013,  # 'free' undefined; assuming extern returning int
+          4018,  # signed/unsigned mismatch
           4054,  #
           4057,  # 'function' : 'volatile LONG *' differs in indirection to slightly different base types from 'unsigned long *'
           4189,  #
@@ -49,6 +48,7 @@
           4152,  # function/data pointer conversion in expression
           4206,  # translation unit is empty
           4204,  # non-constant aggregate initializer
+          4210,  # nonstandard extension used : function given file scope
           4214,  # bit field types other than int
           4232,  # address of dllimport 'free' is not static, identity not guaranteed
           4291,  # no matching operator delete found
@@ -72,10 +72,12 @@
             '-Wno-unused-function',
             '-Wno-sometimes-uninitialized',
             '-Wno-pointer-sign',
+            '-Wno-sign-compare',
             '-Wno-string-plus-int',
             '-Wno-unused-variable',
             '-Wno-deprecated-declarations',
             '-Wno-return-type',
+            '-Wno-gnu-folding-constant',
           ],
         },
         'conditions': [
@@ -90,13 +92,87 @@
               '-Wno-unused-value',
               '-Wno-deprecated-declarations',
               '-Wno-return-type',
+              # Required when building as shared library.
+              '-fPIC',
             ],
           }],
         ],
       }],
-      ['_target_name in ["node_lib", "atom_lib"]', {
-        'include_dirs': [
-          'vendor/brightray/vendor/download/libchromiumcontent/src/v8/include',
+      ['_target_name=="node"', {
+        'include_dirs': [ '<(libchromiumcontent_src_dir)/v8/include' ],
+        'conditions': [
+          ['OS=="mac" and libchromiumcontent_component==0', {
+            # -all_load is the "whole-archive" on OS X.
+            'xcode_settings': {
+              'OTHER_LDFLAGS': [ '-Wl,-all_load' ],
+            },
+          }],
+          ['OS=="win"', {
+            'libraries': [ '-lwinmm.lib' ],
+            'conditions': [
+              ['libchromiumcontent_component==0', {
+                'variables': {
+                  'conditions': [
+                    ['target_arch=="ia32"', {
+                      'reference_symbols': [
+                        '_u_errorName_54',
+                        '_ubidi_setPara_54',
+                        '_ucsdet_getName_54',
+                        '_uidna_openUTS46_54',
+                        '_ulocdata_close_54',
+                        '_unorm_normalize_54',
+                        '_uregex_matches_54',
+                        '_uscript_getCode_54',
+                        '_usearch_setPattern_54',
+                        '?createInstance@Transliterator@icu_54@@SAPAV12@ABVUnicodeString@2@W4UTransDirection@@AAW4UErrorCode@@@Z',
+                      ],
+                    }, {
+                      'reference_symbols': [
+                        'u_errorName_54',
+                        'ubidi_setPara_54',
+                        'ucsdet_getName_54',
+                        'uidna_openUTS46_54',
+                        'ulocdata_close_54',
+                        'unorm_normalize_54',
+                        'uregex_matches_54',
+                        'uscript_getCode_54',
+                        'usearch_setPattern_54',
+                        '?createInstance@Transliterator@icu_54@@SAPEAV12@AEBVUnicodeString@2@W4UTransDirection@@AEAW4UErrorCode@@@Z',
+                      ],
+                    }],
+                  ],
+                },
+                'msvs_settings': {
+                  'VCLinkerTool': {
+                    # There is nothing like "whole-archive" on Windows, so we
+                    # have to manually force some objets files to be included
+                    # by referencing them.
+                    'ForceSymbolReferences': [ '<@(reference_symbols)' ],  # '/INCLUDE'
+                  },
+                },
+              }],
+            ],
+          }],
+          ['OS=="linux" and libchromiumcontent_component==0', {
+            # Prevent the linker from stripping symbols.
+            'ldflags': [
+              '-Wl,--whole-archive',
+              '<@(libchromiumcontent_v8_libraries)',
+              '-Wl,--no-whole-archive',
+            ],
+          }, {
+            'libraries': [ '<@(libchromiumcontent_v8_libraries)' ],
+          }],
+        ],
+      }],
+      ['_target_name=="openssl"', {
+        'xcode_settings': {
+          'DEAD_CODE_STRIPPING': 'YES',  # -Wl,-dead_strip
+          'GCC_INLINES_ARE_PRIVATE_EXTERN': 'YES',
+          'GCC_SYMBOLS_PRIVATE_EXTERN': 'YES',
+        },
+        'cflags': [
+          '-fvisibility=hidden',
         ],
       }],
       ['_target_name=="libuv"', {
@@ -126,6 +202,12 @@
               '-Wno-empty-body',
             ],
           }],  # OS=="linux"
+          ['OS=="win"', {
+            'msvs_disabled_warnings': [
+              # unreferenced local function has been removed.
+              4505,
+            ],
+          }],  # OS=="win"
         ],
       }],
     ],
@@ -134,97 +216,14 @@
       4005,  # (node.h) macro redefinition
       4189,  # local variable is initialized but not referenced
       4201,  # (uv.h) nameless struct/union
+      4267,  # conversion from 'size_t' to 'int', possible loss of data
+      4503,  # decorated name length exceeded, name was truncated
       4800,  # (v8.h) forcing value to bool 'true' or 'false'
       4819,  # The file contains a character that cannot be represented in the current code page
+      4996,  # (atlapp.h) 'GetVersionExW': was declared deprecated
     ],
-    'msvs_settings': {
-      'VCCLCompilerTool': {
-        # Programs that use the Standard C++ library must be compiled with C++
-        # exception handling enabled.
-        # http://support.microsoft.com/kb/154419
-        'ExceptionHandling': 1,
-      },
-      'VCLinkerTool': {
-        'AdditionalOptions': [
-          # ATL 8.0 included in WDK 7.1 makes the linker to generate following
-          # warnings:
-          #   - warning LNK4254: section 'ATL' (50000040) merged into
-          #     '.rdata' (40000040) with different attributes
-          #   - warning LNK4078: multiple 'ATL' sections found with
-          #     different attributes
-          '/ignore:4254',
-          '/ignore:4078',
-          # views_chromiumcontent.lib generates this warning because it's
-          # symobls are defined as dllexport but used as static library:
-          #   - warning LNK4217: locally defined symbol imported in function
-          #   - warning LNK4049: locally defined symbol imported
-          '/ignore:4217',
-          '/ignore:4049',
-        ],
-      },
-    },
-    'xcode_settings': {
-      'DEBUG_INFORMATION_FORMAT': 'dwarf-with-dsym',
-    },
   },
   'conditions': [
-    # Settings to compile with clang under OS X.
-    ['clang==1', {
-      'make_global_settings': [
-        ['CC', '/usr/bin/clang'],
-        ['CXX', '/usr/bin/clang++'],
-        ['LINK', '$(CXX)'],
-        ['CC.host', '$(CC)'],
-        ['CXX.host', '$(CXX)'],
-        ['LINK.host', '$(LINK)'],
-      ],
-      'target_defaults': {
-        'cflags_cc': [
-          # Use gnu++11 instead of c++11 here, see:
-          # https://code.google.com/p/chromium/issues/detail?id=224515
-          '-std=gnu++11',
-        ],
-        'xcode_settings': {
-          'CC': '/usr/bin/clang',
-          'LDPLUSPLUS': '/usr/bin/clang++',
-          'OTHER_CPLUSPLUSFLAGS': [
-            '$(inherited)', '-std=gnu++11'
-          ],
-          'OTHER_CFLAGS': [
-            '-fcolor-diagnostics',
-          ],
-
-          'GCC_C_LANGUAGE_STANDARD': 'c99',  # -std=c99
-        },
-      },
-    }],  # clang==1
-    # Using Visual Studio Express.
-    ['msvs_express==1', {
-      'target_defaults': {
-        'defines!': [
-          '_SECURE_ATL',
-        ],
-        'msvs_settings': {
-          'VCLibrarianTool': {
-            'AdditionalLibraryDirectories': [
-              '<(windows_driver_kit_path)/lib/ATL/i386',
-            ],
-          },
-          'VCLinkerTool': {
-            'AdditionalLibraryDirectories': [
-              '<(windows_driver_kit_path)/lib/ATL/i386',
-            ],
-            'AdditionalDependencies': [
-              'atlthunk.lib',
-            ],
-          },
-        },
-        'msvs_system_include_dirs': [
-          '<(windows_driver_kit_path)/inc/atl71',
-          '<(windows_driver_kit_path)/inc/mfc42',
-        ],
-      },
-    }],  # msvs_express==1
     # The breakdpad on Windows assumes Debug_x64 and Release_x64 configurations.
     ['OS=="win"', {
       'target_defaults': {
@@ -245,24 +244,5 @@
         },
       },
     }],  # OS=="mac"
-    # The breakpad on Linux needs the binary to be built with -g to generate
-    # unmangled symbols.
-    ['OS=="linux"', {
-      'target_defaults': {
-        'cflags': [ '-g' ],
-        'conditions': [
-          ['target_arch=="ia32"', {
-            'target_conditions': [
-              ['_toolset=="target"', {
-                'ldflags': [
-                  # Workaround for linker OOM.
-                  '-Wl,--no-keep-memory',
-                ],
-              }],
-            ],
-          }],
-        ],
-      },
-    }],
   ],
 }

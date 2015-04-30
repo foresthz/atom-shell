@@ -1,4 +1,4 @@
-// Copyright (c) 2013 GitHub, Inc. All rights reserved.
+// Copyright (c) 2013 GitHub, Inc.
 // Use of this source code is governed by the MIT license that can be
 // found in the LICENSE file.
 
@@ -47,6 +47,47 @@ const char kWebPreferences[] = "web-preferences";
 
 // The factor of which page should be zoomed.
 const char kZoomFactor[] = "zoom-factor";
+
+// The menu bar is hidden unless "Alt" is pressed.
+const char kAutoHideMenuBar[] = "auto-hide-menu-bar";
+
+// Enable window to be resized larger than screen.
+const char kEnableLargerThanScreen[] = "enable-larger-than-screen";
+
+// Forces to use dark theme on Linux.
+const char kDarkTheme[] = "dark-theme";
+
+// Enable DirectWrite on Windows.
+const char kDirectWrite[] = "direct-write";
+
+// Enable plugins.
+const char kEnablePlugins[] = "enable-plugins";
+
+// Instancd ID of guest WebContents.
+const char kGuestInstanceID[] = "guest-instance-id";
+
+// Script that will be loaded by guest WebContents before other scripts.
+const char kPreloadScript[] = "preload";
+
+// Whether the window should be transparent.
+const char kTransparent[] = "transparent";
+
+// Window type hint.
+const char kType[] = "type";
+
+// Disable auto-hiding cursor.
+const char kDisableAutoHideCursor[] = "disable-auto-hide-cursor";
+
+// Web runtime features.
+const char kExperimentalFeatures[]       = "experimental-features";
+const char kExperimentalCanvasFeatures[] = "experimental-canvas-features";
+const char kSubpixelFontScaling[]        = "subpixel-font-scaling";
+const char kOverlayScrollbars[]          = "overlay-scrollbars";
+const char kOverlayFullscreenVideo[]     = "overlay-fullscreen-video";
+const char kSharedWorker[]               = "shared-worker";
+
+// Disable HTTP cache.
+const char kDisableHttpCache[] = "disable-http-cache";
 
 }  // namespace switches
 

@@ -5,6 +5,8 @@ remote = require 'remote'
 
 BrowserWindow = remote.require 'browser-window'
 
+isCI = remote.process.argv[2] == '--ci'
+
 describe 'browser-window module', ->
   fixtures = path.resolve __dirname, 'fixtures'
 
@@ -56,6 +58,22 @@ describe 'browser-window module', ->
         done()
       w.loadUrl 'about:blank'
 
+    it 'should emit did-fail-load event', (done) ->
+      w.webContents.on 'did-fail-load', ->
+        done()
+      w.loadUrl 'file://a.txt'
+
+  describe 'BrowserWindow.show()', ->
+    it 'should focus on window', ->
+      return if isCI
+      w.show()
+      assert w.isFocused()
+
+  describe 'BrowserWindow.showInactive()', ->
+    it 'should not focus on window', ->
+      w.showInactive()
+      assert !w.isFocused()
+
   describe 'BrowserWindow.focus()', ->
     it 'does not make the window become visible', ->
       assert.equal w.isVisible(), false
@@ -65,14 +83,11 @@ describe 'browser-window module', ->
   describe 'BrowserWindow.capturePage(rect, callback)', ->
     it 'calls the callback with a Buffer', (done) ->
       w.capturePage {x: 0, y: 0, width: 100, height: 100}, (image) ->
-        assert.equal image.constructor.name, 'Buffer'
+        assert.equal image.isEmpty(), true
         done()
 
   describe 'BrowserWindow.setSize(width, height)', ->
     it 'sets the window size', ->
-      # No way to reliably set size when window has not been shown on Linux.
-      return if process.platform is 'linux'
-
       size = [400, 400]
       w.setSize size[0], size[1]
       after = w.getSize()
@@ -81,9 +96,6 @@ describe 'browser-window module', ->
 
   describe 'BrowserWindow.setContentSize(width, height)', ->
     it 'sets the content size', ->
-      # No way to reliably set size when window has not been shown on Linux.
-      return if process.platform is 'linux'
-
       size = [400, 400]
       w.setContentSize size[0], size[1]
       after = w.getContentSize()
@@ -103,12 +115,41 @@ describe 'browser-window module', ->
       assert.equal contentSize[1], 400
 
     it 'make window created with window size when not used', ->
-      # No way to reliably set size when window has not been shown on Linux.
-      return if process.platform is 'linux'
+      size = w.getSize()
+      assert.equal size[0], 400
+      assert.equal size[1], 400
 
-      contentSize = w.getSize()
-      assert.equal contentSize[0], 400
-      assert.equal contentSize[1], 400
+  describe '"enable-larger-than-screen" option', ->
+    return if process.platform is 'linux'
+
+    beforeEach ->
+      w.destroy()
+      w = new BrowserWindow(show: true, width: 400, height: 400, 'enable-larger-than-screen': true)
+
+    it 'can move the window out of screen', ->
+      w.setPosition -10, -10
+      after = w.getPosition()
+      assert.equal after[0], -10
+      assert.equal after[1], -10
+
+    it 'can set the window larger than screen', ->
+      size = require('screen').getPrimaryDisplay().size
+      size.width += 100
+      size.height += 100
+      w.setSize size.width, size.height
+      after = w.getSize()
+      assert.equal after[0], size.width
+      assert.equal after[1], size.height
+
+  describe '"preload" options', ->
+    it 'loads the script before other scripts in window', (done) ->
+      preload = path.join fixtures, 'module', 'set-global.js'
+      remote.require('ipc').once 'preload', (event, test) ->
+        assert.equal(test, 'preload')
+        done()
+      w.destroy()
+      w = new BrowserWindow(show: false, width: 400, height: 400, preload: preload)
+      w.loadUrl 'file://' + path.join(fixtures, 'api', 'preload.html')
 
   describe 'beforeunload handler', ->
     it 'returning true would not prevent close', (done) ->
@@ -130,3 +171,54 @@ describe 'browser-window module', ->
       w.on 'onbeforeunload', ->
         done()
       w.loadUrl 'file://' + path.join(fixtures, 'api', 'close-beforeunload-empty-string.html')
+
+  describe 'new-window event', ->
+    it 'emits when window.open is called', (done) ->
+      w.webContents.once 'new-window', (e, url, frameName) ->
+        e.preventDefault()
+        assert.equal url, 'http://host'
+        assert.equal frameName, 'host'
+        done()
+      w.loadUrl "file://#{fixtures}/pages/window-open.html"
+
+    it 'emits when link with target is called', (done) ->
+      w.webContents.once 'new-window', (e, url, frameName) ->
+        e.preventDefault()
+        assert.equal url, 'http://host/'
+        assert.equal frameName, 'target'
+        done()
+      w.loadUrl "file://#{fixtures}/pages/target-name.html"
+
+  describe 'maximize event', ->
+    return if isCI and process.platform is 'linux'
+    it 'emits when window is maximized', (done) ->
+      @timeout 10000
+      w.once 'maximize', -> done()
+      w.show()
+      w.maximize()
+
+  describe 'unmaximize event', ->
+    return if isCI and process.platform is 'linux'
+    it 'emits when window is unmaximized', (done) ->
+      @timeout 10000
+      w.once 'unmaximize', -> done()
+      w.show()
+      w.maximize()
+      w.unmaximize()
+
+  describe 'minimize event', ->
+    return if isCI and process.platform is 'linux'
+    it 'emits when window is minimized', (done) ->
+      @timeout 10000
+      w.once 'minimize', -> done()
+      w.show()
+      w.minimize()
+
+  describe 'will-navigate event', ->
+    it 'emits when user starts a navigation', (done) ->
+      @timeout 10000
+      w.webContents.on 'will-navigate', (event, url) ->
+        event.preventDefault()
+        assert.equal url, 'https://www.github.com/'
+        done()
+      w.loadUrl "file://#{fixtures}/pages/will-navigate.html"

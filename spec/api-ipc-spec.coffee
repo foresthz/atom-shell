@@ -19,8 +19,8 @@ describe 'ipc module', ->
       assert.equal a.id, 1127
 
     it 'should search module from the user app', ->
-      assert.equal remote.process.mainModule.filename, path.resolve(__dirname, 'static', 'main.js')
-      assert.equal remote.process.mainModule.paths[0], path.resolve(__dirname, 'static', 'node_modules')
+      assert.equal path.normalize(remote.process.mainModule.filename), path.resolve(__dirname, 'static', 'main.js')
+      assert.equal path.normalize(remote.process.mainModule.paths[0]), path.resolve(__dirname, 'static', 'node_modules')
 
   describe 'remote.createFunctionWithReturnValue', ->
     it 'should be called in browser synchronously', ->
@@ -66,6 +66,7 @@ describe 'ipc module', ->
       assert.equal msg, 'test'
 
     it 'does not crash when reply is not sent and browser is destroyed', (done) ->
+      @timeout 10000
       w = new BrowserWindow(show: false)
       remote.require('ipc').once 'send-sync-message', (event) ->
         event.returnValue = null

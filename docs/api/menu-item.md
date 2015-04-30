@@ -12,17 +12,14 @@
      `radio`
   * `label` String
   * `sublabel` String
-  * `accelerator` String - In the form of `Command+R`, `Ctrl+C`,
-    `Shift+Command+D`, `D`, etc.
+  * `accelerator` [Accelerator](accelerator.md)
+  * `icon` [NativeImage](native-image.md)
   * `enabled` Boolean
   * `visible` Boolean
   * `checked` Boolean
   * `submenu` Menu - Should be specified for `submenu` type menu item, when
      it's specified the `type: 'submenu'` can be omitted for the menu item
-
-## Notes on accelerator
-
-On Linux and Windows, the `Command` key would not have any effect, you can
-use `CommandOrControl` which represents `Command` on OS X and `Control` on
-Linux and Windows to define some accelerators, you can also use its short
-alias `CmdOrCtrl`.
+  * `id` String - Unique within a single menu. If defined then it can be used
+     as a reference to this item by the position attribute.
+  * `position` String - This field allows fine-grained definition of the
+     specific location within a given menu.

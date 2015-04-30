@@ -1,4 +1,4 @@
-// Copyright (c) 2013 GitHub, Inc. All rights reserved.
+// Copyright (c) 2013 GitHub, Inc.
 // Use of this source code is governed by the MIT license that can be
 // found in the LICENSE file.
 
@@ -8,6 +8,7 @@
 #include <string>
 
 #include "atom/browser/api/atom_api_window.h"
+#include "base/callback.h"
 #include "base/memory/scoped_ptr.h"
 #include "ui/base/models/simple_menu_model.h"
 #include "native_mate/wrappable.h"
@@ -15,8 +16,6 @@
 namespace atom {
 
 namespace api {
-
-class MenuMac;
 
 class Menu : public mate::Wrappable,
              public ui::SimpleMenuModel::Delegate {
@@ -40,20 +39,21 @@ class Menu : public mate::Wrappable,
   Menu();
   virtual ~Menu();
 
-  // ui::SimpleMenuModel::Delegate implementations:
-  virtual bool IsCommandIdChecked(int command_id) const OVERRIDE;
-  virtual bool IsCommandIdEnabled(int command_id) const OVERRIDE;
-  virtual bool IsCommandIdVisible(int command_id) const OVERRIDE;
-  virtual bool GetAcceleratorForCommandId(
-      int command_id,
-      ui::Accelerator* accelerator) OVERRIDE;
-  virtual bool IsItemForCommandIdDynamic(int command_id) const OVERRIDE;
-  virtual string16 GetLabelForCommandId(int command_id) const OVERRIDE;
-  virtual string16 GetSublabelForCommandId(int command_id) const OVERRIDE;
-  virtual void ExecuteCommand(int command_id, int event_flags) OVERRIDE;
-  virtual void MenuWillShow(ui::SimpleMenuModel* source) OVERRIDE;
+  // mate::Wrappable:
+  void AfterInit(v8::Isolate* isolate) override;
 
+  // ui::SimpleMenuModel::Delegate implementations:
+  bool IsCommandIdChecked(int command_id) const override;
+  bool IsCommandIdEnabled(int command_id) const override;
+  bool IsCommandIdVisible(int command_id) const override;
+  bool GetAcceleratorForCommandId(int command_id,
+                                  ui::Accelerator* accelerator) override;
+  void ExecuteCommand(int command_id, int event_flags) override;
+  void MenuWillShow(ui::SimpleMenuModel* source) override;
+
+  virtual void AttachToWindow(Window* window);
   virtual void Popup(Window* window) = 0;
+  virtual void PopupAt(Window* window, int x, int y) = 0;
 
   scoped_ptr<ui::SimpleMenuModel> model_;
   Menu* parent_;
@@ -72,6 +72,7 @@ class Menu : public mate::Wrappable,
                        int command_id,
                        const base::string16& label,
                        Menu* menu);
+  void SetIcon(int index, const gfx::Image& image);
   void SetSublabel(int index, const base::string16& sublabel);
   void Clear();
   int GetIndexOfCommandId(int command_id);
@@ -83,13 +84,13 @@ class Menu : public mate::Wrappable,
   bool IsEnabledAt(int index) const;
   bool IsVisibleAt(int index) const;
 
-#if defined(OS_WIN)
-  virtual void UpdateStates() = 0;
-#endif
-
-#if defined(OS_WIN) || defined(TOOLKIT_GTK)
-  virtual void AttachToWindow(Window* window) = 0;
-#endif
+  // Stored delegate methods.
+  base::Callback<bool(int)> is_checked_;
+  base::Callback<bool(int)> is_enabled_;
+  base::Callback<bool(int)> is_visible_;
+  base::Callback<v8::Handle<v8::Value>(int)> get_accelerator_;
+  base::Callback<void(int)> execute_command_;
+  base::Callback<void()> menu_will_show_;
 
   DISALLOW_COPY_AND_ASSIGN(Menu);
 };

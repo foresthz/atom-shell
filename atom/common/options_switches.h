@@ -1,4 +1,4 @@
-// Copyright (c) 2013 GitHub, Inc. All rights reserved.
+// Copyright (c) 2013 GitHub, Inc.
 // Use of this source code is governed by the MIT license that can be
 // found in the LICENSE file.
 
@@ -32,6 +32,25 @@ extern const char kAcceptFirstMouse[];
 extern const char kUseContentSize[];
 extern const char kWebPreferences[];
 extern const char kZoomFactor[];
+extern const char kAutoHideMenuBar[];
+extern const char kEnableLargerThanScreen[];
+extern const char kDarkTheme[];
+extern const char kDirectWrite[];
+extern const char kEnablePlugins[];
+extern const char kGuestInstanceID[];
+extern const char kPreloadScript[];
+extern const char kTransparent[];
+extern const char kType[];
+extern const char kDisableAutoHideCursor[];
+
+extern const char kExperimentalFeatures[];
+extern const char kExperimentalCanvasFeatures[];
+extern const char kSubpixelFontScaling[];
+extern const char kOverlayScrollbars[];
+extern const char kOverlayFullscreenVideo[];
+extern const char kSharedWorker[];
+
+extern const char kDisableHttpCache[];
 
 }  // namespace switches
 

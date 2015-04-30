@@ -1,4 +1,4 @@
-// Copyright (c) 2013 GitHub, Inc. All rights reserved.
+// Copyright (c) 2013 GitHub, Inc.
 // Use of this source code is governed by the MIT license that can be
 // found in the LICENSE file.
 
@@ -6,7 +6,7 @@
 
 #include <string>
 
-#include "base/file_util.h"
+#include "base/files/file_util.h"
 #include "base/logging.h"
 #include "base/memory/singleton.h"
 #include "base/strings/string_util.h"
@@ -40,14 +40,13 @@ void CrashReporterWin::InitBreakpad(const std::string& product_name,
   skip_system_crash_handler_ = skip_system_crash_handler;
 
   base::FilePath temp_dir;
-  if (!file_util::GetTempDir(&temp_dir)) {
+  if (!base::GetTempDir(&temp_dir)) {
     LOG(ERROR) << "Cannot get temp directory";
     return;
   }
 
-  string16 pipe_name = ReplaceStringPlaceholders(kPipeNameFormat,
-                                                 UTF8ToUTF16(product_name),
-                                                 NULL);
+  base::string16 pipe_name = ReplaceStringPlaceholders(
+      kPipeNameFormat, base::UTF8ToUTF16(product_name), NULL);
 
   // Wait until the crash service is started.
   HANDLE waiting_event =
@@ -55,12 +54,14 @@ void CrashReporterWin::InitBreakpad(const std::string& product_name,
   if (waiting_event != INVALID_HANDLE_VALUE)
     WaitForSingleObject(waiting_event, 1000);
 
+  int handler_types = google_breakpad::ExceptionHandler::HANDLER_EXCEPTION |
+      google_breakpad::ExceptionHandler::HANDLER_PURECALL;
   breakpad_.reset(new google_breakpad::ExceptionHandler(
       temp_dir.value(),
       FilterCallback,
       MinidumpCallback,
       this,
-      google_breakpad::ExceptionHandler::HANDLER_ALL,
+      handler_types,
       kSmallDumpType,
       pipe_name.c_str(),
       GetCustomInfo(product_name, version, company_name)));
@@ -102,15 +103,15 @@ google_breakpad::CustomClientInfo* CrashReporterWin::GetCustomInfo(
   custom_info_entries_.reserve(2 + upload_parameters_.size());
 
   custom_info_entries_.push_back(google_breakpad::CustomInfoEntry(
-      L"prod", L"Atom-Shell"));
+      L"prod", L"Electron"));
   custom_info_entries_.push_back(google_breakpad::CustomInfoEntry(
-      L"ver", UTF8ToWide(version).c_str()));
+      L"ver", base::UTF8ToWide(version).c_str()));
 
   for (StringMap::const_iterator iter = upload_parameters_.begin();
        iter != upload_parameters_.end(); ++iter) {
     custom_info_entries_.push_back(google_breakpad::CustomInfoEntry(
-        UTF8ToWide(iter->first).c_str(),
-        UTF8ToWide(iter->second).c_str()));
+        base::UTF8ToWide(iter->first).c_str(),
+        base::UTF8ToWide(iter->second).c_str()));
   }
 
   custom_info_.entries = &custom_info_entries_.front();

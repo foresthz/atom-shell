@@ -1,4 +1,4 @@
-// Copyright (c) 2014 GitHub, Inc. All rights reserved.
+// Copyright (c) 2014 GitHub, Inc.
 // Use of this source code is governed by the MIT license that can be
 // found in the LICENSE file.
 
@@ -13,6 +13,7 @@
 }
 - (id)initWithIcon:(atom::TrayIconCocoa*)icon;
 - (void)handleClick:(id)sender;
+- (void)handleDoubleClick:(id)sender;
 
 @end // @interface StatusItemController
 
@@ -24,8 +25,11 @@
 }
 
 - (void)handleClick:(id)sender {
-  DCHECK(trayIcon_);
   trayIcon_->NotifyClicked();
+}
+
+- (void)handleDoubleClick:(id)sender {
+  trayIcon_->NotifyDoubleClicked();
 }
 
 @end
@@ -40,6 +44,7 @@ TrayIconCocoa::TrayIconCocoa() {
   [item_ setEnabled:YES];
   [item_ setTarget:controller_];
   [item_ setAction:@selector(handleClick:)];
+  [item_ setDoubleAction:@selector(handleDoubleClick:)];
   [item_ setHighlightMode:YES];
 }
 
@@ -48,24 +53,24 @@ TrayIconCocoa::~TrayIconCocoa() {
   [[NSStatusBar systemStatusBar] removeStatusItem:item_];
 }
 
-void TrayIconCocoa::SetImage(const gfx::ImageSkia& image) {
-  if (!image.isNull()) {
-    gfx::Image neutral(image);
-    if (!neutral.IsEmpty())
-      [item_ setImage:neutral.ToNSImage()];
-  }
+void TrayIconCocoa::SetImage(const gfx::Image& image) {
+  [item_ setImage:image.AsNSImage()];
 }
 
-void TrayIconCocoa::SetPressedImage(const gfx::ImageSkia& image) {
-  if (!image.isNull()) {
-    gfx::Image neutral(image);
-    if (!neutral.IsEmpty())
-      [item_ setAlternateImage:neutral.ToNSImage()];
-  }
+void TrayIconCocoa::SetPressedImage(const gfx::Image& image) {
+  [item_ setAlternateImage:image.AsNSImage()];
 }
 
 void TrayIconCocoa::SetToolTip(const std::string& tool_tip) {
   [item_ setToolTip:base::SysUTF8ToNSString(tool_tip)];
+}
+
+void TrayIconCocoa::SetTitle(const std::string& title) {
+  [item_ setTitle:base::SysUTF8ToNSString(title)];
+}
+
+void TrayIconCocoa::SetHighlightMode(bool highlight) {
+  [item_ setHighlightMode:highlight];
 }
 
 void TrayIconCocoa::SetContextMenu(ui::SimpleMenuModel* menu_model) {

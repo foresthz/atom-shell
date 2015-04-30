@@ -1,16 +1,18 @@
-// Copyright (c) 2013 GitHub, Inc. All rights reserved.
+// Copyright (c) 2013 GitHub, Inc.
 // Use of this source code is governed by the MIT license that can be
 // found in the LICENSE file.
 
 #ifndef ATOM_BROWSER_ATOM_BROWSER_MAIN_PARTS_H_
 #define ATOM_BROWSER_ATOM_BROWSER_MAIN_PARTS_H_
 
+#include "base/timer/timer.h"
 #include "brightray/browser/browser_main_parts.h"
 
 namespace atom {
 
 class AtomBindings;
 class Browser;
+class JavascriptEnvironment;
 class NodeBindings;
 
 class AtomBrowserMainParts : public brightray::BrowserMainParts {
@@ -24,21 +26,27 @@ class AtomBrowserMainParts : public brightray::BrowserMainParts {
 
  protected:
   // Implementations of brightray::BrowserMainParts.
-  virtual brightray::BrowserContext* CreateBrowserContext() OVERRIDE;
+  brightray::BrowserContext* CreateBrowserContext() override;
 
   // Implementations of content::BrowserMainParts.
-  virtual void PostEarlyInitialization() OVERRIDE;
-  virtual void PreMainMessageLoopRun() OVERRIDE;
-  virtual int PreCreateThreads() OVERRIDE;
+  void PostEarlyInitialization() override;
+  void PreMainMessageLoopRun() override;
 #if defined(OS_MACOSX)
-  virtual void PreMainMessageLoopStart() OVERRIDE;
-  virtual void PostDestroyThreads() OVERRIDE;
+  void PreMainMessageLoopStart() override;
+  void PostDestroyThreads() override;
 #endif
 
  private:
-  scoped_ptr<AtomBindings> atom_bindings_;
+#if defined(USE_X11)
+  void SetDPIFromGSettings();
+#endif
+
   scoped_ptr<Browser> browser_;
+  scoped_ptr<JavascriptEnvironment> js_env_;
   scoped_ptr<NodeBindings> node_bindings_;
+  scoped_ptr<AtomBindings> atom_bindings_;
+
+  base::Timer gc_timer_;
 
   static AtomBrowserMainParts* self_;
 

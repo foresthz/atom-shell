@@ -1,4 +1,4 @@
-// Copyright (c) 2013 GitHub, Inc. All rights reserved.
+// Copyright (c) 2013 GitHub, Inc.
 // Use of this source code is governed by the MIT license that can be
 // found in the LICENSE file.
 
@@ -9,6 +9,7 @@
 #include "base/values.h"
 #include "content/public/common/common_param_traits.h"
 #include "ipc/ipc_message_macros.h"
+#include "ui/gfx/ipc/gfx_param_traits.h"
 
 // The message starter should be declared in ipc/ipc_message_start.h. Since
 // we don't want to patch Chromium, we just pretend to be Content Shell.
@@ -21,17 +22,17 @@ IPC_STRUCT_TRAITS_BEGIN(atom::DraggableRegion)
 IPC_STRUCT_TRAITS_END()
 
 IPC_MESSAGE_ROUTED2(AtomViewHostMsg_Message,
-                    string16 /* channel */,
-                    ListValue /* arguments */)
+                    base::string16 /* channel */,
+                    base::ListValue /* arguments */)
 
 IPC_SYNC_MESSAGE_ROUTED2_1(AtomViewHostMsg_Message_Sync,
-                           string16 /* channel */,
-                           ListValue /* arguments */,
-                           string16 /* result (in JSON) */)
+                           base::string16 /* channel */,
+                           base::ListValue /* arguments */,
+                           base::string16 /* result (in JSON) */)
 
 IPC_MESSAGE_ROUTED2(AtomViewMsg_Message,
-                    string16 /* channel */,
-                    ListValue /* arguments */)
+                    base::string16 /* channel */,
+                    base::ListValue /* arguments */)
 
 // Sent by the renderer when the draggable regions are updated.
 IPC_MESSAGE_ROUTED1(AtomViewHostMsg_UpdateDraggableRegions,

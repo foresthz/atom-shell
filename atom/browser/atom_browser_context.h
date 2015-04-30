@@ -1,17 +1,18 @@
-// Copyright (c) 2013 GitHub, Inc. All rights reserved.
+// Copyright (c) 2013 GitHub, Inc.
 // Use of this source code is governed by the MIT license that can be
 // found in the LICENSE file.
 
 #ifndef ATOM_BROWSER_ATOM_BROWSER_CONTEXT_H_
 #define ATOM_BROWSER_ATOM_BROWSER_CONTEXT_H_
 
-#include "base/memory/scoped_ptr.h"
 #include "brightray/browser/browser_context.h"
+
+class BrowserProcess;
 
 namespace atom {
 
-class AtomResourceContext;
-class AtomURLRequestContextGetter;
+class AtomURLRequestJobFactory;
+class WebViewManager;
 
 class AtomBrowserContext : public brightray::BrowserContext {
  public:
@@ -21,22 +22,24 @@ class AtomBrowserContext : public brightray::BrowserContext {
   // Returns the browser context singleton.
   static AtomBrowserContext* Get();
 
-  // Creates or returns the request context.
-  AtomURLRequestContextGetter* CreateRequestContext(
-      content::ProtocolHandlerMap*);
+  // brightray::URLRequestContextGetter::Delegate:
+  net::URLRequestJobFactory* CreateURLRequestJobFactory(
+      content::ProtocolHandlerMap* handlers,
+      content::URLRequestInterceptorScopedVector* interceptors) override;
+  net::HttpCache::BackendFactory* CreateHttpCacheBackendFactory(
+      const base::FilePath& base_path) override;
 
-  AtomURLRequestContextGetter* url_request_context_getter() const {
-    DCHECK(url_request_getter_);
-    return url_request_getter_.get();
-  }
+  // content::BrowserContext:
+  content::BrowserPluginGuestManager* GetGuestManager() override;
 
- protected:
-  // content::BrowserContext implementations:
-  virtual content::ResourceContext* GetResourceContext() OVERRIDE;
+  AtomURLRequestJobFactory* job_factory() const { return job_factory_; }
 
  private:
-  scoped_ptr<AtomResourceContext> resource_context_;
-  scoped_refptr<AtomURLRequestContextGetter> url_request_getter_;
+  // A fake BrowserProcess object that used to feed the source code from chrome.
+  scoped_ptr<BrowserProcess> fake_browser_process_;
+  scoped_ptr<WebViewManager> guest_manager_;
+
+  AtomURLRequestJobFactory* job_factory_;  // Weak reference.
 
   DISALLOW_COPY_AND_ASSIGN(AtomBrowserContext);
 };

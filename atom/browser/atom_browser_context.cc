@@ -1,76 +1,90 @@
-// Copyright (c) 2013 GitHub, Inc. All rights reserved.
+// Copyright (c) 2013 GitHub, Inc.
 // Use of this source code is governed by the MIT license that can be
 // found in the LICENSE file.
 
 #include "atom/browser/atom_browser_context.h"
 
 #include "atom/browser/atom_browser_main_parts.h"
-#include "atom/browser/net/atom_url_request_context_getter.h"
+#include "atom/browser/net/atom_url_request_job_factory.h"
+#include "atom/browser/net/asar/asar_protocol_handler.h"
+#include "atom/browser/web_view_manager.h"
+#include "atom/common/options_switches.h"
+#include "base/command_line.h"
+#include "base/threading/sequenced_worker_pool.h"
+#include "base/threading/worker_pool.h"
+#include "chrome/browser/browser_process.h"
 #include "content/public/browser/browser_thread.h"
-#include "content/public/browser/resource_context.h"
-#include "vendor/brightray/browser/network_delegate.h"
-
-namespace atom {
+#include "content/public/common/url_constants.h"
+#include "net/url_request/data_protocol_handler.h"
+#include "net/url_request/url_request_intercepting_job_factory.h"
+#include "url/url_constants.h"
 
 using content::BrowserThread;
 
-class AtomResourceContext : public content::ResourceContext {
- public:
-  AtomResourceContext() : getter_(NULL) {}
+namespace atom {
 
-  void set_url_request_context_getter(AtomURLRequestContextGetter* getter) {
-    getter_ = getter;
+namespace {
+
+class NoCacheBackend : public net::HttpCache::BackendFactory {
+  int CreateBackend(net::NetLog* net_log,
+                    scoped_ptr<disk_cache::Backend>* backend,
+                    const net::CompletionCallback& callback) override {
+    return net::ERR_FAILED;
   }
-
- protected:
-  virtual net::HostResolver* GetHostResolver() OVERRIDE {
-    DCHECK(getter_);
-    return getter_->host_resolver();
-  }
-
-  virtual net::URLRequestContext* GetRequestContext() OVERRIDE {
-    DCHECK(getter_);
-    return getter_->GetURLRequestContext();
-  }
-
-  virtual bool AllowMicAccess(const GURL& origin) OVERRIDE {
-    return true;
-  }
-
-  virtual bool AllowCameraAccess(const GURL& origin) OVERRIDE {
-    return true;
-  }
-
- private:
-  AtomURLRequestContextGetter* getter_;
-
-  DISALLOW_COPY_AND_ASSIGN(AtomResourceContext);
 };
 
+}  // namespace
+
 AtomBrowserContext::AtomBrowserContext()
-    : resource_context_(new AtomResourceContext) {
+    : fake_browser_process_(new BrowserProcess),
+      job_factory_(new AtomURLRequestJobFactory) {
 }
 
 AtomBrowserContext::~AtomBrowserContext() {
 }
 
-AtomURLRequestContextGetter* AtomBrowserContext::CreateRequestContext(
-    content::ProtocolHandlerMap* protocol_handlers) {
-  DCHECK(!url_request_getter_);
-  url_request_getter_ = new AtomURLRequestContextGetter(
-      GetPath(),
-      BrowserThread::UnsafeGetMessageLoopForThread(BrowserThread::IO),
-      BrowserThread::UnsafeGetMessageLoopForThread(BrowserThread::FILE),
-      base::Bind(&AtomBrowserContext::CreateNetworkDelegate,
-                 base::Unretained(this)),
-      protocol_handlers);
+net::URLRequestJobFactory* AtomBrowserContext::CreateURLRequestJobFactory(
+    content::ProtocolHandlerMap* handlers,
+    content::URLRequestInterceptorScopedVector* interceptors) {
+  scoped_ptr<AtomURLRequestJobFactory> job_factory(job_factory_);
 
-  resource_context_->set_url_request_context_getter(url_request_getter_.get());
-  return url_request_getter_.get();
+  for (content::ProtocolHandlerMap::iterator it = handlers->begin();
+       it != handlers->end(); ++it)
+    job_factory->SetProtocolHandler(it->first, it->second.release());
+  handlers->clear();
+
+  job_factory->SetProtocolHandler(
+      url::kDataScheme, new net::DataProtocolHandler);
+  job_factory->SetProtocolHandler(
+      url::kFileScheme, new asar::AsarProtocolHandler(
+          BrowserThread::GetBlockingPool()->GetTaskRunnerWithShutdownBehavior(
+              base::SequencedWorkerPool::SKIP_ON_SHUTDOWN)));
+
+  // Set up interceptors in the reverse order.
+  scoped_ptr<net::URLRequestJobFactory> top_job_factory = job_factory.Pass();
+  content::URLRequestInterceptorScopedVector::reverse_iterator it;
+  for (it = interceptors->rbegin(); it != interceptors->rend(); ++it)
+    top_job_factory.reset(new net::URLRequestInterceptingJobFactory(
+        top_job_factory.Pass(), make_scoped_ptr(*it)));
+  interceptors->weak_clear();
+
+  return top_job_factory.release();
 }
 
-content::ResourceContext* AtomBrowserContext::GetResourceContext() {
-  return resource_context_.get();
+net::HttpCache::BackendFactory*
+AtomBrowserContext::CreateHttpCacheBackendFactory(
+    const base::FilePath& base_path) {
+  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+  if (command_line->HasSwitch(switches::kDisableHttpCache))
+    return new NoCacheBackend;
+  else
+    return brightray::BrowserContext::CreateHttpCacheBackendFactory(base_path);
+}
+
+content::BrowserPluginGuestManager* AtomBrowserContext::GetGuestManager() {
+  if (!guest_manager_)
+    guest_manager_.reset(new WebViewManager(this));
+  return guest_manager_.get();
 }
 
 // static

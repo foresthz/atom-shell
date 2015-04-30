@@ -1,4 +1,4 @@
-// Copyright (c) 2013 GitHub, Inc. All rights reserved.
+// Copyright (c) 2013 GitHub, Inc.
 // Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by the MIT license that can be
 // found in the LICENSE file.
@@ -70,7 +70,8 @@ int EventFlagsFromNSEvent(NSEvent* event) {
 @synthesize model = model_;
 
 - (id)init {
-  self = [super init];
+  if ((self = [super init]))
+    [self menu];
   return self;
 }
 
@@ -91,6 +92,22 @@ int EventFlagsFromNSEvent(NSEvent* event) {
 
   model_ = NULL;
   [super dealloc];
+}
+
+- (void)populateWithModel:(ui::MenuModel*)model {
+  if (!menu_)
+    return;
+
+  model_ = model;
+  [menu_ removeAllItems];
+
+  const int count = model->GetItemCount();
+  for (int index = 0; index < count; index++) {
+    if (model->GetTypeAt(index) == ui::MenuModel::TYPE_SEPARATOR)
+      [self addSeparatorToMenu:menu_ atIndex:index];
+    else
+      [self addItemToMenu:menu_ atIndex:index fromModel:model];
+  }
 }
 
 - (void)cancel {
@@ -131,7 +148,7 @@ int EventFlagsFromNSEvent(NSEvent* event) {
 - (void)addItemToMenu:(NSMenu*)menu
               atIndex:(NSInteger)index
             fromModel:(ui::MenuModel*)model {
-  string16 label16 = model->GetLabelAt(index);
+  base::string16 label16 = model->GetLabelAt(index);
   NSString* label = l10n_util::FixUpWindowsStyleLabel(label16);
   base::scoped_nsobject<NSMenuItem> item(
       [[NSMenuItem alloc] initWithTitle:label
@@ -159,6 +176,9 @@ int EventFlagsFromNSEvent(NSEvent* event) {
       [NSApp setWindowsMenu:submenu];
     else if ([[item title] isEqualToString:@"Help"])
       [NSApp setHelpMenu:submenu];
+    if ([[item title] isEqualToString:@"Services"] &&
+        [submenu numberOfItems] == 0)
+      [NSApp setServicesMenu:submenu];
   } else {
     // The MenuModel works on indexes so we can't just set the command id as the
     // tag like we do in other menus. Also set the represented object to be
@@ -232,10 +252,13 @@ int EventFlagsFromNSEvent(NSEvent* event) {
 }
 
 - (NSMenu*)menu {
-  if (!menu_ && model_) {
-    menu_.reset([[self menuFromModel:model_] retain]);
-    [menu_ setDelegate:self];
-  }
+  if (menu_)
+    return menu_.get();
+
+  menu_.reset([[NSMenu alloc] initWithTitle:@""]);
+  [menu_ setDelegate:self];
+  if (model_)
+    [self populateWithModel:model_];
   return menu_.get();
 }
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2013 GitHub, Inc. All rights reserved.
+// Copyright (c) 2013 GitHub, Inc.
 // Use of this source code is governed by the MIT license that can be
 // found in the LICENSE file.
 
@@ -36,23 +36,31 @@ void RelaunchToInstallUpdate() {
 // static
 void AutoUpdater::SetFeedURL(const std::string& feed) {
   if (g_updater == nil) {
-    // Initialize the SQRLUpdater.
-    NSURL* url = [NSURL URLWithString:base::SysUTF8ToNSString(feed)];
-    NSURLRequest* urlRequest = [NSURLRequest requestWithURL:url];
-    g_updater = [[SQRLUpdater alloc] initWithUpdateRequest:urlRequest];
-
     AutoUpdaterDelegate* delegate = GetDelegate();
     if (!delegate)
       return;
 
+    // Initialize the SQRLUpdater.
+    NSURL* url = [NSURL URLWithString:base::SysUTF8ToNSString(feed)];
+    NSURLRequest* urlRequest = [NSURLRequest requestWithURL:url];
+
+    @try {
+      g_updater = [[SQRLUpdater alloc] initWithUpdateRequest:urlRequest];
+    } @catch (NSException* error) {
+      delegate->OnError(base::SysNSStringToUTF8(error.reason));
+      return;
+    }
+
     [[g_updater rac_valuesForKeyPath:@"state" observer:g_updater]
       subscribeNext:^(NSNumber *stateNumber) {
         int state = [stateNumber integerValue];
-        if (state == SQRLUpdaterStateCheckingForUpdate) {
-          delegate->OnCheckingForUpdate();
-        } else if (state == SQRLUpdaterStateDownloadingUpdate) {
-          delegate->OnUpdateAvailable();
-        }
+        // Dispatching the event on main thread.
+        dispatch_async(dispatch_get_main_queue(), ^{
+          if (state == SQRLUpdaterStateCheckingForUpdate)
+            delegate->OnCheckingForUpdate();
+          else if (state == SQRLUpdaterStateDownloadingUpdate)
+            delegate->OnUpdateAvailable();
+        });
     }];
   }
 }
@@ -86,7 +94,10 @@ void AutoUpdater::CheckForUpdates() {
           delegate->OnUpdateNotAvailable();
         }
       } error:^(NSError *error) {
-        delegate->OnError(base::SysNSStringToUTF8(error.localizedDescription));
+        delegate->OnError(base::SysNSStringToUTF8(
+            [NSString stringWithFormat:@"%@: %@",
+                error.localizedDescription, error.localizedFailureReason]));
       }];
 }
+
 }  // namespace auto_updater

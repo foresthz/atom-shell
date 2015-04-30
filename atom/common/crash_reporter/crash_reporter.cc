@@ -1,4 +1,4 @@
-// Copyright (c) 2013 GitHub, Inc. All rights reserved.
+// Copyright (c) 2013 GitHub, Inc.
 // Use of this source code is governed by the MIT license that can be
 // found in the LICENSE file.
 
@@ -12,8 +12,8 @@
 namespace crash_reporter {
 
 CrashReporter::CrashReporter() {
-  const CommandLine& command = *CommandLine::ForCurrentProcess();
-  is_browser_ = command.GetSwitchValueASCII(switches::kProcessType).empty();
+  auto cmd = base::CommandLine::ForCurrentProcess();
+  is_browser_ = cmd->GetSwitchValueASCII(switches::kProcessType).empty();
 }
 
 CrashReporter::~CrashReporter() {

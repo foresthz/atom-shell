@@ -1,4 +1,4 @@
-// Copyright (c) 2013 GitHub, Inc. All rights reserved.
+// Copyright (c) 2013 GitHub, Inc.
 // Use of this source code is governed by the MIT license that can be
 // found in the LICENSE file.
 
@@ -9,29 +9,32 @@
 #include <string>
 #include <vector>
 
-#include "base/basictypes.h"
+#include "atom/browser/native_window_observer.h"
+#include "atom/browser/ui/accelerator_util.h"
 #include "base/cancelable_callback.h"
-#include "base/compiler_specific.h"
 #include "base/memory/scoped_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/observer_list.h"
-#include "atom/browser/native_window_observer.h"
+#include "brightray/browser/default_web_contents_delegate.h"
+#include "brightray/browser/inspectable_web_contents_delegate.h"
+#include "brightray/browser/inspectable_web_contents_impl.h"
 #include "content/public/browser/notification_registrar.h"
 #include "content/public/browser/notification_observer.h"
-#include "vendor/brightray/browser/default_web_contents_delegate.h"
-#include "vendor/brightray/browser/inspectable_web_contents_delegate.h"
-#include "vendor/brightray/browser/inspectable_web_contents_impl.h"
+#include "content/public/browser/readback_types.h"
+#include "native_mate/persistent_dictionary.h"
+#include "ui/gfx/image/image.h"
 
+namespace base {
 class CommandLine;
-struct WebPreferences;
+}
 
 namespace content {
 class BrowserContext;
 class WebContents;
+struct WebPreferences;
 }
 
 namespace gfx {
-class Image;
 class Point;
 class Rect;
 class Size;
@@ -41,18 +44,22 @@ namespace mate {
 class Dictionary;
 }
 
+namespace ui {
+class MenuModel;
+}
+
 namespace atom {
 
 class AtomJavaScriptDialogManager;
 struct DraggableRegion;
+class WebDialogHelper;
 
 class NativeWindow : public brightray::DefaultWebContentsDelegate,
                      public brightray::InspectableWebContentsDelegate,
                      public content::WebContentsObserver,
                      public content::NotificationObserver {
  public:
-  typedef base::Callback<void(const std::vector<unsigned char>& buffer)>
-      CapturePageCallback;
+  typedef base::Callback<void(const SkBitmap& bitmap)> CapturePageCallback;
 
   class DialogScope {
    public:
@@ -95,6 +102,7 @@ class NativeWindow : public brightray::DefaultWebContentsDelegate,
   virtual void Focus(bool focus) = 0;
   virtual bool IsFocused() = 0;
   virtual void Show() = 0;
+  virtual void ShowInactive() = 0;
   virtual void Hide() = 0;
   virtual bool IsVisible() = 0;
   virtual void Maximize() = 0;
@@ -102,8 +110,9 @@ class NativeWindow : public brightray::DefaultWebContentsDelegate,
   virtual bool IsMaximized() = 0;
   virtual void Minimize() = 0;
   virtual void Restore() = 0;
-  virtual void SetFullscreen(bool fullscreen) = 0;
-  virtual bool IsFullscreen() = 0;
+  virtual bool IsMinimized() = 0;
+  virtual void SetFullScreen(bool fullscreen) = 0;
+  virtual bool IsFullscreen() const = 0;
   virtual void SetSize(const gfx::Size& size) = 0;
   virtual gfx::Size GetSize() = 0;
   virtual void SetContentSize(const gfx::Size& size) = 0;
@@ -126,12 +135,20 @@ class NativeWindow : public brightray::DefaultWebContentsDelegate,
   virtual void SetKiosk(bool kiosk) = 0;
   virtual bool IsKiosk() = 0;
   virtual void SetRepresentedFilename(const std::string& filename);
+  virtual std::string GetRepresentedFilename();
   virtual void SetDocumentEdited(bool edited);
+  virtual bool IsDocumentEdited();
+  virtual void SetMenu(ui::MenuModel* menu);
   virtual bool HasModalDialog();
   virtual gfx::NativeWindow GetNativeWindow() = 0;
+  virtual void SetProgressBar(double progress) = 0;
+  virtual void SetOverlayIcon(const gfx::Image& overlay,
+                              const std::string& description) = 0;
+  virtual void SetVisibleOnAllWorkspaces(bool visible) = 0;
+  virtual bool IsVisibleOnAllWorkspaces() = 0;
 
   virtual bool IsClosed() const { return is_closed_; }
-  virtual void OpenDevTools();
+  virtual void OpenDevTools(bool can_dock);
   virtual void CloseDevTools();
   virtual bool IsDevToolsOpened();
   virtual void InspectElement(int x, int y);
@@ -144,6 +161,18 @@ class NativeWindow : public brightray::DefaultWebContentsDelegate,
   // done.
   virtual void CapturePage(const gfx::Rect& rect,
                            const CapturePageCallback& callback);
+
+  // Print current page.
+  virtual void Print(bool silent, bool print_background);
+
+  // Show popup dictionary.
+  virtual void ShowDefinitionForSelection();
+
+  // Toggle the menu bar.
+  virtual void SetAutoHideMenuBar(bool auto_hide);
+  virtual bool IsMenuBarAutoHide();
+  virtual void SetMenuBarVisibility(bool visible);
+  virtual bool IsMenuBarVisible();
 
   // The same with closing a tab in a real browser.
   //
@@ -161,15 +190,21 @@ class NativeWindow : public brightray::DefaultWebContentsDelegate,
   content::WebContents* GetDevToolsWebContents() const;
 
   // Called when renderer process is going to be started.
-  void AppendExtraCommandLineSwitches(CommandLine* command_line,
+  void AppendExtraCommandLineSwitches(base::CommandLine* command_line,
                                       int child_process_id);
-  void OverrideWebkitPrefs(const GURL& url, WebPreferences* prefs);
+  void OverrideWebkitPrefs(content::WebPreferences* prefs);
 
   // Public API used by platform-dependent delegates and observers to send UI
   // related notifications.
   void NotifyWindowClosed();
   void NotifyWindowBlur();
   void NotifyWindowFocus();
+  void NotifyWindowMaximize();
+  void NotifyWindowUnmaximize();
+  void NotifyWindowMinimize();
+  void NotifyWindowRestore();
+  void NotifyWindowEnterFullScreen();
+  void NotifyWindowLeaveFullScreen();
 
   void AddObserver(NativeWindowObserver* obs) {
     observers_.AddObserver(obs);
@@ -199,49 +234,80 @@ class NativeWindow : public brightray::DefaultWebContentsDelegate,
       const std::vector<DraggableRegion>& regions) = 0;
 
   // Implementations of content::WebContentsDelegate.
-  virtual content::WebContents* OpenURLFromTab(
+  bool ShouldCreateWebContents(
+      content::WebContents* web_contents,
+      int route_id,
+      int main_frame_route_id,
+      WindowContainerType window_container_type,
+      const base::string16& frame_name,
+      const GURL& target_url,
+      const std::string& partition_id,
+      content::SessionStorageNamespace* session_storage_namespace) override;
+  content::WebContents* OpenURLFromTab(
       content::WebContents* source,
-      const content::OpenURLParams& params) OVERRIDE;
-  virtual content::JavaScriptDialogManager*
-      GetJavaScriptDialogManager() OVERRIDE;
-  virtual void BeforeUnloadFired(content::WebContents* tab,
-                                 bool proceed,
-                                 bool* proceed_to_fire_unload) OVERRIDE;
-  virtual void RequestToLockMouse(content::WebContents* web_contents,
-                                  bool user_gesture,
-                                  bool last_unlocked_by_target) OVERRIDE;
-  virtual bool CanOverscrollContent() const OVERRIDE;
-  virtual void ActivateContents(content::WebContents* contents) OVERRIDE;
-  virtual void DeactivateContents(content::WebContents* contents) OVERRIDE;
-  virtual void MoveContents(content::WebContents* source,
-                            const gfx::Rect& pos) OVERRIDE;
-  virtual void CloseContents(content::WebContents* source) OVERRIDE;
-  virtual bool IsPopupOrPanel(
-      const content::WebContents* source) const OVERRIDE;
-  virtual void RendererUnresponsive(content::WebContents* source) OVERRIDE;
-  virtual void RendererResponsive(content::WebContents* source) OVERRIDE;
+      const content::OpenURLParams& params) override;
+  content::JavaScriptDialogManager* GetJavaScriptDialogManager(
+      content::WebContents* source) override;
+  void BeforeUnloadFired(content::WebContents* tab,
+                         bool proceed,
+                         bool* proceed_to_fire_unload) override;
+  content::ColorChooser* OpenColorChooser(
+      content::WebContents* web_contents,
+      SkColor color,
+      const std::vector<content::ColorSuggestion>& suggestions) override;
+  void RunFileChooser(content::WebContents* web_contents,
+                      const content::FileChooserParams& params) override;
+  void EnumerateDirectory(content::WebContents* web_contents,
+                          int request_id,
+                          const base::FilePath& path) override;
+  void RequestToLockMouse(content::WebContents* web_contents,
+                          bool user_gesture,
+                          bool last_unlocked_by_target) override;
+  bool CanOverscrollContent() const override;
+  void ActivateContents(content::WebContents* contents) override;
+  void DeactivateContents(content::WebContents* contents) override;
+  void MoveContents(content::WebContents* source,
+                    const gfx::Rect& pos) override;
+  void CloseContents(content::WebContents* source) override;
+  bool IsPopupOrPanel(
+      const content::WebContents* source) const override;
+  void RendererUnresponsive(content::WebContents* source) override;
+  void RendererResponsive(content::WebContents* source) override;
+  void EnterFullscreenModeForTab(content::WebContents* source,
+                                 const GURL& origin) override;
+  void ExitFullscreenModeForTab(content::WebContents* source) override;
+  bool IsFullscreenForTabOrPending(
+      const content::WebContents* source) const override;
 
   // Implementations of content::WebContentsObserver.
-  virtual void BeforeUnloadFired(const base::TimeTicks& proceed_time) OVERRIDE;
-  virtual bool OnMessageReceived(const IPC::Message& message) OVERRIDE;
+  void RenderViewCreated(content::RenderViewHost* render_view_host) override;
+  void BeforeUnloadFired(const base::TimeTicks& proceed_time) override;
+  bool OnMessageReceived(const IPC::Message& message) override;
 
   // Implementations of content::NotificationObserver.
-  virtual void Observe(int type,
-                       const content::NotificationSource& source,
-                       const content::NotificationDetails& details) OVERRIDE;
+  void Observe(int type,
+               const content::NotificationSource& source,
+               const content::NotificationDetails& details) override;
 
   // Implementations of brightray::InspectableWebContentsDelegate.
-  virtual void DevToolsSaveToFile(const std::string& url,
-                                  const std::string& content,
-                                  bool save_as) OVERRIDE;
-  virtual void DevToolsAppendToFile(const std::string& url,
-                                    const std::string& content) OVERRIDE;
+  void DevToolsSaveToFile(const std::string& url,
+                          const std::string& content,
+                          bool save_as) override;
+  void DevToolsAppendToFile(const std::string& url,
+                            const std::string& content) override;
+  void DevToolsFocused() override;
 
   // Whether window has standard frame.
   bool has_frame_;
 
+  // Whether window is transparent.
+  bool transparent_;
+
+  // Whether window can be resized larger than screen.
+  bool enable_larger_than_screen_;
+
   // Window icon.
-  scoped_ptr<gfx::Image> icon_;
+  gfx::ImageSkia icon_;
 
  private:
   // Schedule a notification unresponsive event.
@@ -258,8 +324,8 @@ class NativeWindow : public brightray::DefaultWebContentsDelegate,
 
   // Called when CapturePage has done.
   void OnCapturePageDone(const CapturePageCallback& callback,
-                         bool succeed,
-                         const SkBitmap& bitmap);
+                         const SkBitmap& bitmap,
+                         content::ReadbackResponse response);
 
   // Notification manager.
   content::NotificationRegistrar registrar_;
@@ -270,8 +336,8 @@ class NativeWindow : public brightray::DefaultWebContentsDelegate,
   // The windows has been closed.
   bool is_closed_;
 
-  // The security token of iframe.
-  std::string node_integration_;
+  // Whether node integration is enabled.
+  bool node_integration_;
 
   // There is a dialog that has been attached to window.
   bool has_dialog_attached_;
@@ -281,13 +347,17 @@ class NativeWindow : public brightray::DefaultWebContentsDelegate,
   base::CancelableClosure window_unresposive_closure_;
 
   // Web preferences.
-  scoped_ptr<mate::Dictionary> web_preferences_;
+  mate::PersistentDictionary web_preferences_;
+
+  // The script to load before page's JavaScript starts to run.
+  base::FilePath preload_script_;
 
   // Page's default zoom factor.
   double zoom_factor_;
 
   base::WeakPtrFactory<NativeWindow> weak_factory_;
 
+  scoped_ptr<WebDialogHelper> web_dialog_helper_;
   scoped_ptr<AtomJavaScriptDialogManager> dialog_manager_;
 
   // Notice that inspectable_web_contents_ must be placed after dialog_manager_,

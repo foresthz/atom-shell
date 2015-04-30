@@ -1,4 +1,4 @@
-// Copyright (c) 2013 GitHub, Inc. All rights reserved.
+// Copyright (c) 2013 GitHub, Inc.
 // Copyright (c) 2011 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by the MIT license that can be
 // found in the LICENSE file.
@@ -50,7 +50,7 @@ ProtocolHandler* AtomURLRequestJobFactory::ReplaceProtocol(
 
   base::AutoLock locked(lock_);
   if (!ContainsKey(protocol_handler_map_, scheme))
-    return NULL;
+    return nullptr;
   ProtocolHandler* original_protocol_handler = protocol_handler_map_[scheme];
   protocol_handler_map_[scheme] = protocol_handler;
   return original_protocol_handler;
@@ -63,7 +63,7 @@ ProtocolHandler* AtomURLRequestJobFactory::GetProtocolHandler(
   base::AutoLock locked(lock_);
   ProtocolHandlerMap::const_iterator it = protocol_handler_map_.find(scheme);
   if (it == protocol_handler_map_.end())
-    return NULL;
+    return nullptr;
   return it->second;
 }
 
@@ -82,8 +82,21 @@ net::URLRequestJob* AtomURLRequestJobFactory::MaybeCreateJobWithProtocolHandler(
   base::AutoLock locked(lock_);
   ProtocolHandlerMap::const_iterator it = protocol_handler_map_.find(scheme);
   if (it == protocol_handler_map_.end())
-    return NULL;
+    return nullptr;
   return it->second->MaybeCreateJob(request, network_delegate);
+}
+
+net::URLRequestJob* AtomURLRequestJobFactory::MaybeInterceptRedirect(
+    net::URLRequest* request,
+    net::NetworkDelegate* network_delegate,
+    const GURL& location) const {
+  return nullptr;
+}
+
+net::URLRequestJob* AtomURLRequestJobFactory::MaybeInterceptResponse(
+    net::URLRequest* request,
+    net::NetworkDelegate* network_delegate) const {
+  return nullptr;
 }
 
 bool AtomURLRequestJobFactory::IsHandledProtocol(

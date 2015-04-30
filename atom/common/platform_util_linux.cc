@@ -1,4 +1,4 @@
-// Copyright (c) 2013 GitHub, Inc. All rights reserved.
+// Copyright (c) 2013 GitHub, Inc.
 // Use of this source code is governed by the MIT license that can be
 // found in the LICENSE file.
 
@@ -6,28 +6,35 @@
 
 #include <stdio.h>
 
-#include "base/file_util.h"
+#include "base/files/file_util.h"
 #include "base/process/kill.h"
 #include "base/process/launch.h"
 #include "url/gurl.h"
 
 namespace {
 
-void XDGUtil(const std::string& util, const std::string& arg) {
+bool XDGUtil(const std::string& util, const std::string& arg) {
   std::vector<std::string> argv;
   argv.push_back(util);
   argv.push_back(arg);
 
   base::LaunchOptions options;
+  options.allow_new_privs = true;
   // xdg-open can fall back on mailcap which eventually might plumb through
   // to a command that needs a terminal.  Set the environment variable telling
   // it that we definitely don't have a terminal available and that it should
   // bring up a new terminal if necessary.  See "man mailcap".
   options.environ["MM_NOTTTY"] = "1";
 
-  base::ProcessHandle handle;
-  if (base::LaunchProcess(argv, options, &handle))
-    base::EnsureProcessGetsReaped(handle);
+  base::Process process = base::LaunchProcess(argv, options);
+  if (!process.IsValid())
+    return false;
+
+  int exit_code = -1;
+  if (!process.WaitForExit(&exit_code))
+    return false;
+
+  return (exit_code == 0);
 }
 
 void XDGOpen(const std::string& path) {
@@ -64,8 +71,8 @@ void OpenExternal(const GURL& url) {
     XDGOpen(url.spec());
 }
 
-void MoveItemToTrash(const base::FilePath& full_path) {
-  XDGUtil("gvfs-trash", full_path.value());
+bool MoveItemToTrash(const base::FilePath& full_path) {
+  return XDGUtil("gvfs-trash", full_path.value());
 }
 
 void Beep() {

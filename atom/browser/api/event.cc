@@ -1,4 +1,4 @@
-// Copyright (c) 2014 GitHub, Inc. All rights reserved.
+// Copyright (c) 2014 GitHub, Inc.
 // Use of this source code is governed by the MIT license that can be
 // found in the LICENSE file.
 
@@ -11,19 +11,29 @@
 
 namespace mate {
 
+namespace {
+
+v8::Persistent<v8::ObjectTemplate> template_;
+
+}  // namespace
+
 Event::Event()
     : sender_(NULL),
-      message_(NULL),
-      prevent_default_(false) {
+      message_(NULL) {
 }
 
 Event::~Event() {
 }
 
 ObjectTemplateBuilder Event::GetObjectTemplateBuilder(v8::Isolate* isolate) {
-  return ObjectTemplateBuilder(isolate)
-      .SetMethod("preventDefault", &Event::PreventDefault)
-      .SetMethod("sendReply", &Event::SendReply);
+  if (template_.IsEmpty())
+    template_.Reset(isolate, ObjectTemplateBuilder(isolate)
+        .SetMethod("preventDefault", &Event::PreventDefault)
+        .SetMethod("sendReply", &Event::SendReply)
+        .Build());
+
+  return ObjectTemplateBuilder(
+      isolate, v8::Local<v8::ObjectTemplate>::New(isolate, template_));
 }
 
 void Event::SetSenderAndMessage(content::WebContents* sender,
@@ -36,16 +46,17 @@ void Event::SetSenderAndMessage(content::WebContents* sender,
   Observe(sender);
 }
 
-void Event::WebContentsDestroyed(content::WebContents* web_contents) {
+void Event::WebContentsDestroyed() {
   sender_ = NULL;
   message_ = NULL;
 }
 
-void Event::PreventDefault() {
-  prevent_default_ = true;
+void Event::PreventDefault(v8::Isolate* isolate) {
+  GetWrapper(isolate)->Set(StringToV8(isolate, "defaultPrevented"),
+                           v8::True(isolate));
 }
 
-bool Event::SendReply(const string16& json) {
+bool Event::SendReply(const base::string16& json) {
   if (message_ == NULL || sender_ == NULL)
     return false;
 

@@ -4,12 +4,12 @@ import errno
 import sys
 import os
 
-from lib.util import safe_mkdir, extract_zip, tempdir, download
+from lib.util import safe_mkdir, rm_rf, extract_zip, tempdir, download
 
 
-VERSION = 'v0.0.3'
+VERSION = 'v0.5.0'
 SOURCE_ROOT = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
-FRAMEWORKS_URL = 'https://github.com/atom/atom-shell-frameworks/releases' \
+FRAMEWORKS_URL = 'http://github.com/atom/atom-shell-frameworks/releases' \
                  '/download/' + VERSION
 
 
@@ -17,12 +17,11 @@ def main():
   os.chdir(SOURCE_ROOT)
   version_file = os.path.join(SOURCE_ROOT, 'external_binaries', '.version')
 
-  safe_mkdir('external_binaries')
   if (is_updated(version_file, VERSION)):
     return
 
-  with open(version_file, 'w') as f:
-    f.write(VERSION)
+  rm_rf('external_binaries')
+  safe_mkdir('external_binaries')
 
   if sys.platform == 'darwin':
     download_and_unzip('Mantle')
@@ -30,6 +29,9 @@ def main():
     download_and_unzip('Squirrel')
   elif sys.platform in ['cygwin', 'win32']:
     download_and_unzip('directxsdk')
+
+  with open(version_file, 'w') as f:
+    f.write(VERSION)
 
 
 def is_updated(version_file, version):
@@ -52,7 +54,7 @@ def download_and_unzip(framework):
 def download_framework(framework):
   filename = framework + '.zip'
   url = FRAMEWORKS_URL + '/' + filename
-  download_dir = tempdir(prefix='atom-shell-')
+  download_dir = tempdir(prefix='electron-')
   path = os.path.join(download_dir, filename)
 
   download('Download ' + framework, url, path)

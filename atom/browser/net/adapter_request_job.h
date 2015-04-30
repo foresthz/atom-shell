@@ -1,4 +1,4 @@
-// Copyright (c) 2013 GitHub, Inc. All rights reserved.
+// Copyright (c) 2013 GitHub, Inc.
 // Use of this source code is governed by the MIT license that can be
 // found in the LICENSE file.
 
@@ -10,6 +10,7 @@
 #include "base/memory/weak_ptr.h"
 #include "net/url_request/url_request_job.h"
 #include "net/url_request/url_request_job_factory.h"
+#include "v8/include/v8.h"
 
 namespace base {
 class FilePath;
@@ -28,16 +29,16 @@ class AdapterRequestJob : public net::URLRequestJob {
 
  public:
   // net::URLRequestJob:
-  virtual void Start() OVERRIDE;
-  virtual void Kill() OVERRIDE;
-  virtual bool ReadRawData(net::IOBuffer* buf,
-                           int buf_size,
-                           int *bytes_read) OVERRIDE;
-  virtual bool IsRedirectResponse(GURL* location,
-                                  int* http_status_code) OVERRIDE;
-  virtual net::Filter* SetupFilter() const OVERRIDE;
-  virtual bool GetMimeType(std::string* mime_type) const OVERRIDE;
-  virtual bool GetCharset(std::string* charset) OVERRIDE;
+  void Start() override;
+  void Kill() override;
+  bool ReadRawData(net::IOBuffer* buf,
+                   int buf_size,
+                   int *bytes_read) override;
+  bool IsRedirectResponse(GURL* location,
+                          int* http_status_code) override;
+  net::Filter* SetupFilter() const override;
+  bool GetMimeType(std::string* mime_type) const override;
+  bool GetCharset(std::string* charset) override;
 
   base::WeakPtr<AdapterRequestJob> GetWeakPtr();
 
@@ -50,6 +51,9 @@ class AdapterRequestJob : public net::URLRequestJob {
   void CreateStringJobAndStart(const std::string& mime_type,
                                const std::string& charset,
                                const std::string& data);
+  void CreateBufferJobAndStart(const std::string& mime_type,
+                               const std::string& charset,
+                               v8::Local<v8::Object> buffer);
   void CreateFileJobAndStart(const base::FilePath& path);
   void CreateJobFromProtocolHandlerAndStart();
 

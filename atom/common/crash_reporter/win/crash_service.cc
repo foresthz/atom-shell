@@ -11,8 +11,10 @@
 #include <map>
 
 #include "base/command_line.h"
-#include "base/file_util.h"
+#include "base/files/file_util.h"
 #include "base/logging.h"
+#include "base/strings/string_number_conversions.h"
+#include "base/time/time.h"
 #include "base/win/windows_version.h"
 #include "vendor/breakpad/src/client/windows/crash_generation/client_info.h"
 #include "vendor/breakpad/src/client/windows/crash_generation/crash_generation_server.h"
@@ -63,6 +65,30 @@ bool WriteCustomInfoToFile(const std::wstring& dump_path, const CrashMap& map) {
     line += L'\n';
     file.write(line.c_str(), static_cast<std::streamsize>(line.length()));
   }
+  return true;
+}
+
+bool WriteReportIDToFile(const std::wstring& dump_path,
+                         const std::wstring& report_id) {
+  std::wstring file_path(dump_path);
+  size_t last_slash = file_path.rfind(L'\\');
+  if (last_slash == std::wstring::npos)
+    return false;
+  file_path.resize(last_slash);
+  file_path += L"\\uploads.log";
+
+  std::wofstream file(file_path.c_str(),
+      std::ios_base::out | std::ios_base::app | std::ios::binary);
+  if (!file.is_open())
+    return false;
+
+  int64 seconds_since_epoch =
+      (base::Time::Now() - base::Time::UnixEpoch()).InSeconds();
+  std::wstring line = base::Int64ToString16(seconds_since_epoch);
+  line += L',';
+  line += report_id;
+  line += L'\n';
+  file.write(line.c_str(), static_cast<std::streamsize>(line.length()));
   return true;
 }
 
@@ -179,7 +205,7 @@ bool CrashService::Initialize(const base::FilePath& operating_dir,
   // reports per day quota. Does not seem to serve any other purpose.
   base::FilePath checkpoint_path = operating_dir.Append(kCheckPointFile);
 
-  CommandLine& cmd_line = *CommandLine::ForCurrentProcess();
+  base::CommandLine& cmd_line = *base::CommandLine::ForCurrentProcess();
 
   base::FilePath dumps_path_to_use = dumps_path;
 
@@ -347,7 +373,7 @@ void CrashService::OnClientDumpRequest(void* context,
   CrashMap::const_iterator it = map.find(L"breakpad-dump-location");
   if (it != map.end()) {
     base::FilePath alternate_dump_location = base::FilePath(it->second);
-    file_util::CreateDirectoryW(alternate_dump_location);
+    base::CreateDirectoryW(alternate_dump_location);
     alternate_dump_location = alternate_dump_location.Append(
         dump_location.BaseName());
     base::Move(dump_location, alternate_dump_location);
@@ -422,6 +448,7 @@ DWORD CrashService::AsyncSendDump(void* context) {
           ++info->self->requests_sent_;
           ++info->self->requests_handled_;
           retry_round = 0;
+          WriteReportIDToFile(info->dump_path, report_id);
           break;
         case google_breakpad::RESULT_THROTTLED:
           report_id = L"<throttled>";
@@ -429,7 +456,7 @@ DWORD CrashService::AsyncSendDump(void* context) {
         default:
           report_id = L"<unknown>";
           break;
-      };
+      }
     }
 
     VLOG(1) << "dump for pid =" << info->pid << " crash2 id =" << report_id;

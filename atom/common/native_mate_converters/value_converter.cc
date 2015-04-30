@@ -1,4 +1,4 @@
-// Copyright (c) 2014 GitHub, Inc. All rights reserved.
+// Copyright (c) 2014 GitHub, Inc.
 // Use of this source code is governed by the MIT license that can be
 // found in the LICENSE file.
 
@@ -14,9 +14,9 @@ bool Converter<base::DictionaryValue>::FromV8(v8::Isolate* isolate,
                                               base::DictionaryValue* out) {
   scoped_ptr<atom::V8ValueConverter> converter(new atom::V8ValueConverter);
   scoped_ptr<base::Value> value(converter->FromV8Value(
-      val, v8::Context::GetCurrent()));
+      val, isolate->GetCurrentContext()));
   if (value && value->IsType(base::Value::TYPE_DICTIONARY)) {
-    out->Swap(static_cast<DictionaryValue*>(value.get()));
+    out->Swap(static_cast<base::DictionaryValue*>(value.get()));
     return true;
   } else {
     return false;
@@ -28,13 +28,20 @@ bool Converter<base::ListValue>::FromV8(v8::Isolate* isolate,
                                         base::ListValue* out) {
   scoped_ptr<atom::V8ValueConverter> converter(new atom::V8ValueConverter);
   scoped_ptr<base::Value> value(converter->FromV8Value(
-      val, v8::Context::GetCurrent()));
+      val, isolate->GetCurrentContext()));
   if (value->IsType(base::Value::TYPE_LIST)) {
-    out->Swap(static_cast<ListValue*>(value.get()));
+    out->Swap(static_cast<base::ListValue*>(value.get()));
     return true;
   } else {
     return false;
   }
+}
+
+v8::Handle<v8::Value> Converter<base::ListValue>::ToV8(
+    v8::Isolate* isolate,
+    const base::ListValue& val) {
+  scoped_ptr<atom::V8ValueConverter> converter(new atom::V8ValueConverter);
+  return converter->ToV8Value(&val, isolate->GetCurrentContext());
 }
 
 }  // namespace mate

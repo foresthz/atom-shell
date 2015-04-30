@@ -1,18 +1,11 @@
 window.onload = ->
+  inspectorFrame = document.getElementById('inspector-app-iframe').contentWindow
+
   # Use menu API to show context menu.
-  WebInspector.ContextMenu.prototype.show = ->
-    menuObject = @_buildDescriptor()
-    if menuObject.length
-      WebInspector._contextMenu = this
-      createMenu(menuObject, @_event)
-      @_event.consume()
+  inspectorFrame.eval 'InspectorFrontendHost.showContextMenuAtPoint = parent.createMenu'
 
   # Use dialog API to override file chooser dialog.
-  WebInspector.createFileSelectorElement = (callback) ->
-    fileSelectorElement = document.createElement 'span'
-    fileSelectorElement.style.display = 'none'
-    fileSelectorElement.click = showFileChooserDialog.bind this, callback
-    return fileSelectorElement
+  inspectorFrame.eval 'WebInspector.createFileSelectorElement = parent.createFileSelectorElement'
 
 convertToMenuTemplate = (items) ->
   template = []
@@ -36,17 +29,19 @@ convertToMenuTemplate = (items) ->
           label: item.label
           enabled: item.enabled
       if item.id?
-        transformed.click = -> WebInspector.contextMenuItemSelected item.id
+        transformed.click = -> DevToolsAPI.contextMenuItemSelected item.id
       template.push transformed
   template
 
-createMenu = (items, event) ->
+createMenu = (x, y, items, document) ->
   remote = require 'remote'
   Menu = remote.require 'menu'
 
   menu = Menu.buildFromTemplate convertToMenuTemplate(items)
-  menu.popup remote.getCurrentWindow()
-  event.consume true
+  # The menu is expected to show asynchronously.
+  setImmediate ->
+    menu.popup remote.getCurrentWindow()
+    DevToolsAPI.contextMenuCleared()
 
 showFileChooserDialog = (callback) ->
   remote = require 'remote'
@@ -59,3 +54,13 @@ pathToHtml5FileObject = (path) ->
   blob = new Blob([fs.readFileSync(path)])
   blob.name = path
   blob
+
+createFileSelectorElement = (callback) ->
+  fileSelectorElement = document.createElement 'span'
+  fileSelectorElement.style.display = 'none'
+  fileSelectorElement.click = showFileChooserDialog.bind this, callback
+  return fileSelectorElement
+
+# Exposed for iframe.
+window.createMenu = createMenu
+window.createFileSelectorElement = createFileSelectorElement

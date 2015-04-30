@@ -7,6 +7,7 @@ var Menu = require('menu');
 var window = null;
 
 app.commandLine.appendSwitch('js-flags', '--expose_gc');
+app.commandLine.appendSwitch('ignore-certificate-errors');
 
 ipc.on('message', function(event, arg) {
   event.sender.send('message', arg);
@@ -32,7 +33,7 @@ ipc.on('echo', function(event, msg) {
   event.returnValue = msg;
 });
 
-if (process.argv[1] == '--ci') {
+if (process.argv[2] == '--ci') {
   process.removeAllListeners('uncaughtException');
   process.on('uncaughtException', function(error) {
     console.error(error, error.stack);
@@ -133,13 +134,16 @@ app.on('ready', function() {
   app.setApplicationMenu(menu);
 
   // Test if using protocol module would crash.
-  // require('protocol').registerProtocol('test-if-crashes', function() {});
+  require('protocol').registerProtocol('test-if-crashes', function() {});
 
   window = new BrowserWindow({
-    title: 'atom-shell tests',
+    title: 'Electron Tests',
     show: false,
     width: 800,
-    height: 600
+    height: 600,
+    'web-preferences': {
+      javascript: true  // Test whether web-preferences crashes.
+    },
   });
   window.loadUrl('file://' + __dirname + '/index.html');
   window.on('unresponsive', function() {

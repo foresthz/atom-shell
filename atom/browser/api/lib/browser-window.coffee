@@ -1,6 +1,7 @@
 EventEmitter = require('events').EventEmitter
 IDWeakMap = require 'id-weak-map'
 app = require 'app'
+ipc = require 'ipc'
 wrapWebContents = require('web-contents').wrap
 
 BrowserWindow = process.atomBinding('window').BrowserWindow
@@ -16,6 +17,7 @@ BrowserWindow::_init = ->
     @setMenu menu if menu?
 
   @webContents = @getWebContents()
+  @devToolsWebContents = null
   @webContents.once 'destroyed', => @webContents = null
 
   # Remember the window ID.
@@ -23,17 +25,32 @@ BrowserWindow::_init = ->
     value: BrowserWindow.windows.add(this)
     enumerable: true
 
+  # Make new windows requested by links behave like "window.open"
+  @on '-new-window', (event, url, frameName) =>
+    event.sender = @webContents
+    options = show: true, width: 800, height: 600
+    ipc.emit 'ATOM_SHELL_GUEST_WINDOW_MANAGER_WINDOW_OPEN', event, url, frameName, options
+
+  # Redirect "will-navigate" to webContents.
+  @on '-will-navigate', (event, url) =>
+    @webContents.emit 'will-navigate', event, url
+
   # Remove the window from weak map immediately when it's destroyed, since we
   # could be iterating windows before GC happened.
   @once 'closed', =>
     BrowserWindow.windows.remove @id if BrowserWindow.windows.has @id
 
-BrowserWindow::openDevTools = ->
-  @_openDevTools()
+BrowserWindow::openDevTools = (options={}) ->
+  options.detach ?= false
+  @_openDevTools !options.detach
 
   # Force devToolsWebContents to be created.
   @devToolsWebContents = @getDevToolsWebContents()
   @devToolsWebContents.once 'destroyed', => @devToolsWebContents = null
+
+  # Emit devtools events.
+  @devToolsWebContents.once 'did-finish-load', => @emit 'devtools-opened'
+  @devToolsWebContents.once 'destroyed', => @emit 'devtools-closed'
 
 BrowserWindow::toggleDevTools = ->
   if @isDevToolsOpened() then @closeDevTools() else @openDevTools()
@@ -79,8 +96,8 @@ BrowserWindow::send = -> @webContents.send.apply @webContents, arguments
 # Be compatible with old API.
 BrowserWindow::restart = -> @webContents.reload()
 BrowserWindow::getUrl = -> @webContents.getUrl()
-BrowserWindow::reload = -> @webContents.reload()
-BrowserWindow::reloadIgnoringCache = -> @webContents.reloadIgnoringCache()
+BrowserWindow::reload = -> @webContents.reload.apply @webContents, arguments
+BrowserWindow::reloadIgnoringCache = -> @webContents.reloadIgnoringCache.apply @webContents, arguments
 BrowserWindow::getPageTitle = -> @webContents.getTitle()
 BrowserWindow::isLoading = -> @webContents.isLoading()
 BrowserWindow::isWaitingForResponse = -> @webContents.isWaitingForResponse()

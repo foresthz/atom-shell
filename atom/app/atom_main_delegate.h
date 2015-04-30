@@ -1,4 +1,4 @@
-// Copyright (c) 2013 GitHub, Inc. All rights reserved.
+// Copyright (c) 2013 GitHub, Inc.
 // Use of this source code is governed by the MIT license that can be
 // found in the LICENSE file.
 
@@ -6,6 +6,7 @@
 #define ATOM_APP_ATOM_MAIN_DELEGATE_H_
 
 #include "brightray/common/main_delegate.h"
+#include "brightray/common/content_client.h"
 
 namespace atom {
 
@@ -15,21 +16,23 @@ class AtomMainDelegate : public brightray::MainDelegate {
   ~AtomMainDelegate();
 
  protected:
-  virtual bool BasicStartupComplete(int* exit_code) OVERRIDE;
-  virtual void PreSandboxStartup() OVERRIDE;
-  virtual void InitializeResourceBundle();
+  // content::ContentMainDelegate:
+  bool BasicStartupComplete(int* exit_code) override;
+  void PreSandboxStartup() override;
+  content::ContentBrowserClient* CreateContentBrowserClient() override;
+  content::ContentRendererClient* CreateContentRendererClient() override;
 
+  // brightray::MainDelegate:
+  scoped_ptr<brightray::ContentClient> CreateContentClient() override;
+  void AddDataPackFromPath(
+      ui::ResourceBundle* bundle, const base::FilePath& pak_dir) override;
 #if defined(OS_MACOSX)
-  virtual base::FilePath GetResourcesPakFilePath();
-  virtual void OverrideChildProcessPath();
-  virtual void OverrideFrameworkBundlePath();
+  void OverrideChildProcessPath() override;
+  void OverrideFrameworkBundlePath() override;
 #endif
 
  private:
-  virtual content::ContentBrowserClient* CreateContentBrowserClient() OVERRIDE;
-  virtual content::ContentRendererClient*
-      CreateContentRendererClient() OVERRIDE;
-
+  brightray::ContentClient content_client_;
   scoped_ptr<content::ContentBrowserClient> browser_client_;
   scoped_ptr<content::ContentRendererClient> renderer_client_;
 

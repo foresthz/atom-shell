@@ -1,4 +1,4 @@
-// Copyright (c) 2013 GitHub, Inc. All rights reserved.
+// Copyright (c) 2013 GitHub, Inc.
 // Use of this source code is governed by the MIT license that can be
 // found in the LICENSE file.
 
@@ -13,7 +13,8 @@
 namespace atom {
 
 Browser::Browser()
-    : is_quiting_(false) {
+    : is_quiting_(false),
+      is_ready_(false) {
   WindowList::AddObserver(this);
 }
 
@@ -27,7 +28,9 @@ Browser* Browser::Get() {
 }
 
 void Browser::Quit() {
-  is_quiting_ = true;
+  is_quiting_ = HandleBeforeQuit();
+  if (!is_quiting_)
+    return;
 
   atom::WindowList* window_list = atom::WindowList::GetInstance();
   if (window_list->size() == 0)
@@ -37,6 +40,8 @@ void Browser::Quit() {
 }
 
 void Browser::Shutdown() {
+  FOR_EACH_OBSERVER(BrowserObserver, observers_, OnQuit());
+
   is_quiting_ = true;
   base::MessageLoop::current()->Quit();
 }
@@ -67,6 +72,10 @@ std::string Browser::GetName() const {
 
 void Browser::SetName(const std::string& name) {
   name_override_ = name;
+
+#if defined(OS_WIN)
+  SetAppUserModelID(name);
+#endif
 }
 
 bool Browser::OpenFile(const std::string& file_path) {
@@ -91,6 +100,7 @@ void Browser::WillFinishLaunching() {
 }
 
 void Browser::DidFinishLaunching() {
+  is_ready_ = true;
   FOR_EACH_OBSERVER(BrowserObserver, observers_, OnFinishLaunching());
 }
 
@@ -104,6 +114,15 @@ void Browser::NotifyAndShutdown() {
   }
 
   Shutdown();
+}
+
+bool Browser::HandleBeforeQuit() {
+  bool prevent_default = false;
+  FOR_EACH_OBSERVER(BrowserObserver,
+                    observers_,
+                    OnBeforeQuit(&prevent_default));
+
+  return !prevent_default;
 }
 
 void Browser::OnWindowCloseCancelled(NativeWindow* window) {

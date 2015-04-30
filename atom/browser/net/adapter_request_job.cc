@@ -1,4 +1,4 @@
-// Copyright (c) 2013 GitHub, Inc. All rights reserved.
+// Copyright (c) 2013 GitHub, Inc.
 // Use of this source code is governed by the MIT license that can be
 // found in the LICENSE file.
 
@@ -6,6 +6,9 @@
 
 #include "base/threading/sequenced_worker_pool.h"
 #include "atom/browser/net/url_request_string_job.h"
+#include "atom/browser/net/asar/url_request_asar_job.h"
+#include "atom/common/asar/asar_util.h"
+#include "atom/browser/net/url_request_buffer_job.h"
 #include "content/public/browser/browser_thread.h"
 #include "net/base/net_errors.h"
 #include "net/url_request/url_request_error_job.h"
@@ -22,7 +25,7 @@ AdapterRequestJob::AdapterRequestJob(ProtocolHandler* protocol_handler,
 }
 
 void AdapterRequestJob::Start() {
-  DCHECK(!real_job_);
+  DCHECK(!real_job_.get());
   content::BrowserThread::PostTask(
       content::BrowserThread::UI,
       FROM_HERE,
@@ -31,35 +34,35 @@ void AdapterRequestJob::Start() {
 }
 
 void AdapterRequestJob::Kill() {
-  if (real_job_)  // Kill could happen when real_job_ is created.
+  if (real_job_.get())  // Kill could happen when real_job_ is created.
     real_job_->Kill();
 }
 
 bool AdapterRequestJob::ReadRawData(net::IOBuffer* buf,
                                     int buf_size,
                                     int *bytes_read) {
-  DCHECK(real_job_);
+  DCHECK(!real_job_.get());
   return real_job_->ReadRawData(buf, buf_size, bytes_read);
 }
 
 bool AdapterRequestJob::IsRedirectResponse(GURL* location,
                                            int* http_status_code) {
-  DCHECK(real_job_);
+  DCHECK(!real_job_.get());
   return real_job_->IsRedirectResponse(location, http_status_code);
 }
 
 net::Filter* AdapterRequestJob::SetupFilter() const {
-  DCHECK(real_job_);
+  DCHECK(!real_job_.get());
   return real_job_->SetupFilter();
 }
 
 bool AdapterRequestJob::GetMimeType(std::string* mime_type) const {
-  DCHECK(real_job_);
+  DCHECK(!real_job_.get());
   return real_job_->GetMimeType(mime_type);
 }
 
 bool AdapterRequestJob::GetCharset(std::string* charset) {
-  DCHECK(real_job_);
+  DCHECK(!real_job_.get());
   return real_job_->GetCharset(charset);
 }
 
@@ -85,13 +88,22 @@ void AdapterRequestJob::CreateStringJobAndStart(const std::string& mime_type,
   real_job_->Start();
 }
 
-void AdapterRequestJob::CreateFileJobAndStart(const base::FilePath& path) {
+void AdapterRequestJob::CreateBufferJobAndStart(const std::string& mime_type,
+                                                const std::string& charset,
+                                                v8::Local<v8::Object> buffer) {
   DCHECK(content::BrowserThread::CurrentlyOn(content::BrowserThread::IO));
 
-  real_job_ = new net::URLRequestFileJob(
+  real_job_ = new URLRequestBufferJob(
+      request(), network_delegate(), mime_type, charset, buffer);
+  real_job_->Start();
+}
+
+void AdapterRequestJob::CreateFileJobAndStart(const base::FilePath& path) {
+  DCHECK(content::BrowserThread::CurrentlyOn(content::BrowserThread::IO));
+  real_job_ = asar::CreateJobFromPath(
+      path,
       request(),
       network_delegate(),
-      path,
       content::BrowserThread::GetBlockingPool()->
           GetTaskRunnerWithShutdownBehavior(
               base::SequencedWorkerPool::SKIP_ON_SHUTDOWN));

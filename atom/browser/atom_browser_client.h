@@ -1,4 +1,4 @@
-// Copyright (c) 2013 GitHub, Inc. All rights reserved.
+// Copyright (c) 2013 GitHub, Inc.
 // Use of this source code is governed by the MIT license that can be
 // found in the LICENSE file.
 
@@ -11,29 +11,36 @@
 
 namespace atom {
 
+class AtomResourceDispatcherHostDelegate;
+
 class AtomBrowserClient : public brightray::BrowserClient {
  public:
   AtomBrowserClient();
   virtual ~AtomBrowserClient();
 
  protected:
-  net::URLRequestContextGetter* CreateRequestContext(
+  // content::ContentBrowserClient:
+  void RenderProcessWillLaunch(content::RenderProcessHost* host) override;
+  content::SpeechRecognitionManagerDelegate*
+      CreateSpeechRecognitionManagerDelegate() override;
+  content::AccessTokenStore* CreateAccessTokenStore() override;
+  void ResourceDispatcherHostCreated() override;
+  void OverrideWebkitPrefs(content::RenderViewHost* render_view_host,
+                           content::WebPreferences* prefs) override;
+  std::string GetApplicationLocale() override;
+  void OverrideSiteInstanceForNavigation(
       content::BrowserContext* browser_context,
-      content::ProtocolHandlerMap* protocol_handlers) OVERRIDE;
-  virtual void OverrideWebkitPrefs(content::RenderViewHost* render_view_host,
-                                   const GURL& url,
-                                   WebPreferences* prefs) OVERRIDE;
-  virtual bool ShouldSwapProcessesForNavigation(
-      content::SiteInstance* site_instance,
-      const GURL& current_url,
-      const GURL& new_url) OVERRIDE;
-  virtual std::string GetApplicationLocale() OVERRIDE;
-  virtual void AppendExtraCommandLineSwitches(CommandLine* command_line,
-                                              int child_process_id) OVERRIDE;
+      content::SiteInstance* current_instance,
+      const GURL& dest_url,
+      content::SiteInstance** new_instance);
+  void AppendExtraCommandLineSwitches(base::CommandLine* command_line,
+                                      int child_process_id) override;
 
  private:
-  virtual brightray::BrowserMainParts* OverrideCreateBrowserMainParts(
-      const content::MainFunctionParams&) OVERRIDE;
+  brightray::BrowserMainParts* OverrideCreateBrowserMainParts(
+      const content::MainFunctionParams&) override;
+
+  scoped_ptr<AtomResourceDispatcherHostDelegate> resource_dispatcher_delegate_;
 
   // The render process which would be swapped out soon.
   content::RenderProcessHost* dying_render_process_;

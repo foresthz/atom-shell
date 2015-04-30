@@ -1,18 +1,19 @@
-// Copyright (c) 2014 GitHub, Inc. All rights reserved.
+// Copyright (c) 2014 GitHub, Inc.
 // Use of this source code is governed by the MIT license that can be
 // found in the LICENSE file.
 
 #include "atom/browser/ui/win/notify_icon.h"
 
 #include "atom/browser/ui/win/notify_icon_host.h"
-#include "atom/browser/ui/win/menu_2.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/win/windows_version.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "ui/gfx/icon_util.h"
-#include "ui/gfx/point.h"
-#include "ui/gfx/rect.h"
+#include "ui/gfx/image/image.h"
+#include "ui/gfx/geometry/point.h"
+#include "ui/gfx/geometry/rect.h"
+#include "ui/views/controls/menu/menu_runner.h"
 
 namespace atom {
 
@@ -60,8 +61,15 @@ void NotifyIcon::HandleClickEvent(const gfx::Point& cursor_pos,
   if (!SetForegroundWindow(window_))
     return;
 
-  menu_.reset(new Menu2(menu_model_));
-  menu_->RunContextMenuAt(cursor_pos);
+  views::MenuRunner menu_runner(
+      menu_model_,
+      views::MenuRunner::CONTEXT_MENU | views::MenuRunner::HAS_MNEMONICS);
+  ignore_result(menu_runner.RunMenuAt(
+      NULL,
+      NULL,
+      gfx::Rect(cursor_pos, gfx::Size()),
+      views::MENU_ANCHOR_TOPLEFT,
+      ui::MENU_SOURCE_MOUSE));
 }
 
 void NotifyIcon::ResetIcon() {
@@ -83,21 +91,19 @@ void NotifyIcon::ResetIcon() {
     LOG(WARNING) << "Unable to re-create status tray icon.";
 }
 
-void NotifyIcon::SetImage(const gfx::ImageSkia& image) {
+void NotifyIcon::SetImage(const gfx::Image& image) {
   // Create the icon.
   NOTIFYICONDATA icon_data;
   InitIconData(&icon_data);
   icon_data.uFlags = NIF_ICON;
-  icon_.Set(IconUtil::CreateHICONFromSkBitmap(*image.bitmap()));
+  icon_.Set(IconUtil::CreateHICONFromSkBitmap(image.AsBitmap()));
   icon_data.hIcon = icon_.Get();
   BOOL result = Shell_NotifyIcon(NIM_MODIFY, &icon_data);
   if (!result)
     LOG(WARNING) << "Error setting status tray icon image";
-  else
-    host_->UpdateIconVisibilityInBackground(this);
 }
 
-void NotifyIcon::SetPressedImage(const gfx::ImageSkia& image) {
+void NotifyIcon::SetPressedImage(const gfx::Image& image) {
   // Ignore pressed images, since the standard on Windows is to not highlight
   // pressed status icons.
 }
@@ -107,10 +113,33 @@ void NotifyIcon::SetToolTip(const std::string& tool_tip) {
   NOTIFYICONDATA icon_data;
   InitIconData(&icon_data);
   icon_data.uFlags = NIF_TIP;
-  wcscpy_s(icon_data.szTip, UTF8ToUTF16(tool_tip).c_str());
+  wcscpy_s(icon_data.szTip, base::UTF8ToUTF16(tool_tip).c_str());
   BOOL result = Shell_NotifyIcon(NIM_MODIFY, &icon_data);
   if (!result)
     LOG(WARNING) << "Unable to set tooltip for status tray icon";
+}
+
+void NotifyIcon::DisplayBalloon(const gfx::Image& icon,
+                                const base::string16& title,
+                                const base::string16& contents) {
+  NOTIFYICONDATA icon_data;
+  InitIconData(&icon_data);
+  icon_data.uFlags = NIF_INFO;
+  icon_data.dwInfoFlags = NIIF_INFO;
+  wcscpy_s(icon_data.szInfoTitle, title.c_str());
+  wcscpy_s(icon_data.szInfo, contents.c_str());
+  icon_data.uTimeout = 0;
+
+  base::win::Version win_version = base::win::GetVersion();
+  if (!icon.IsEmpty() && win_version != base::win::VERSION_PRE_XP) {
+    balloon_icon_.Set(IconUtil::CreateHICONFromSkBitmap(icon.AsBitmap()));
+    icon_data.hBalloonIcon = balloon_icon_.Get();
+    icon_data.dwInfoFlags = NIIF_USER | NIIF_LARGE_ICON;
+  }
+
+  BOOL result = Shell_NotifyIcon(NIM_MODIFY, &icon_data);
+  if (!result)
+    LOG(WARNING) << "Unable to create status tray balloon.";
 }
 
 void NotifyIcon::SetContextMenu(ui::SimpleMenuModel* menu_model) {
@@ -118,14 +147,8 @@ void NotifyIcon::SetContextMenu(ui::SimpleMenuModel* menu_model) {
 }
 
 void NotifyIcon::InitIconData(NOTIFYICONDATA* icon_data) {
-  if (base::win::GetVersion() >= base::win::VERSION_VISTA) {
-    memset(icon_data, 0, sizeof(NOTIFYICONDATA));
-    icon_data->cbSize = sizeof(NOTIFYICONDATA);
-  } else {
-    memset(icon_data, 0, NOTIFYICONDATA_V3_SIZE);
-    icon_data->cbSize = NOTIFYICONDATA_V3_SIZE;
-  }
-
+  memset(icon_data, 0, sizeof(NOTIFYICONDATA));
+  icon_data->cbSize = sizeof(NOTIFYICONDATA);
   icon_data->hWnd = window_;
   icon_data->uID = icon_id_;
 }

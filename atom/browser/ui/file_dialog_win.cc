@@ -1,4 +1,4 @@
-// Copyright (c) 2013 GitHub, Inc. All rights reserved.
+// Copyright (c) 2013 GitHub, Inc.
 // Use of this source code is governed by the MIT license that can be
 // found in the LICENSE file.
 
@@ -9,12 +9,13 @@
 #include <commdlg.h>
 #include <shlobj.h>
 
-#include "atom/browser/native_window.h"
-#include "base/file_util.h"
+#include "atom/browser/native_window_views.h"
+#include "base/files/file_util.h"
 #include "base/i18n/case_conversion.h"
 #include "base/strings/string_util.h"
 #include "base/strings/string_split.h"
 #include "base/strings/utf_string_conversions.h"
+#include "base/threading/thread.h"
 #include "base/win/registry.h"
 #include "third_party/wtl/include/atlapp.h"
 #include "third_party/wtl/include/atldlgs.h"
@@ -25,108 +26,35 @@ namespace {
 
 // Distinguish directories from regular files.
 bool IsDirectory(const base::FilePath& path) {
-  base::PlatformFileInfo file_info;
-  return file_util::GetFileInfo(path, &file_info) ?
+  base::File::Info file_info;
+  return base::GetFileInfo(path, &file_info) ?
       file_info.is_directory : path.EndsWithSeparator();
 }
 
-// Get the file type description from the registry. This will be "Text Document"
-// for .txt files, "JPEG Image" for .jpg files, etc. If the registry doesn't
-// have an entry for the file type, we return false, true if the description was
-// found. 'file_ext' must be in form ".txt".
-static bool GetRegistryDescriptionFromExtension(const std::wstring& file_ext,
-                                                std::wstring* reg_description) {
-  DCHECK(reg_description);
-  base::win::RegKey reg_ext(HKEY_CLASSES_ROOT, file_ext.c_str(), KEY_READ);
-  std::wstring reg_app;
-  if (reg_ext.ReadValue(NULL, &reg_app) == ERROR_SUCCESS && !reg_app.empty()) {
-    base::win::RegKey reg_link(HKEY_CLASSES_ROOT, reg_app.c_str(), KEY_READ);
-    if (reg_link.ReadValue(NULL, reg_description) == ERROR_SUCCESS)
-      return true;
-  }
-  return false;
-}
-
-// Set up a filter for a Save/Open dialog, which will consist of |file_ext| file
-// extensions (internally separated by semicolons), |ext_desc| as the text
-// descriptions of the |file_ext| types (optional), and (optionally) the default
-// 'All Files' view. The purpose of the filter is to show only files of a
-// particular type in a Windows Save/Open dialog box. The resulting filter is
-// returned. The filters created here are:
-//   1. only files that have 'file_ext' as their extension
-//   2. all files (only added if 'include_all_files' is true)
-// Example:
-//   file_ext: { "*.txt", "*.htm;*.html" }
-//   ext_desc: { "Text Document" }
-//   returned: "Text Document\0*.txt\0HTML Document\0*.htm;*.html\0"
-//             "All Files\0*.*\0\0" (in one big string)
-// If a description is not provided for a file extension, it will be retrieved
-// from the registry. If the file extension does not exist in the registry, it
-// will be omitted from the filter, as it is likely a bogus extension.
-void FormatFilterForExtensions(
-    std::vector<std::wstring>* file_ext,
-    std::vector<std::wstring>* ext_desc,
-    bool include_all_files,
-    std::vector<COMDLG_FILTERSPEC>* file_types) {
-  DCHECK(file_ext->size() >= ext_desc->size());
-
-  if (file_ext->empty())
-    include_all_files = true;
-
-  for (size_t i = 0; i < file_ext->size(); ++i) {
-    std::wstring ext = (*file_ext)[i];
-    std::wstring desc;
-    if (i < ext_desc->size())
-      desc = (*ext_desc)[i];
-
-    if (ext.empty()) {
-      // Force something reasonable to appear in the dialog box if there is no
-      // extension provided.
-      include_all_files = true;
-      continue;
-    }
-
-    if (desc.empty()) {
-      DCHECK(ext.find(L'.') != std::wstring::npos);
-      std::wstring first_extension = ext.substr(ext.find(L'.'));
-      size_t first_separator_index = first_extension.find(L';');
-      if (first_separator_index != std::wstring::npos)
-        first_extension = first_extension.substr(0, first_separator_index);
-
-      // Find the extension name without the preceeding '.' character.
-      std::wstring ext_name = first_extension;
-      size_t ext_index = ext_name.find_first_not_of(L'.');
-      if (ext_index != std::wstring::npos)
-        ext_name = ext_name.substr(ext_index);
-
-      if (!GetRegistryDescriptionFromExtension(first_extension, &desc)) {
-        // The extension doesn't exist in the registry. Create a description
-        // based on the unknown extension type (i.e. if the extension is .qqq,
-        // the we create a description "QQQ File (.qqq)").
-        include_all_files = true;
-        // TODO(zcbenz): should be localized.
-        desc = base::i18n::ToUpper(WideToUTF16(ext_name)) + L" File";
-      }
-      desc += L" (*." + ext_name + L")";
-
-      // Store the description.
-      ext_desc->push_back(desc);
-    }
-
-    COMDLG_FILTERSPEC spec = { (*ext_desc)[i].c_str(), (*file_ext)[i].c_str() };
-    file_types->push_back(spec);
+void ConvertFilters(const Filters& filters,
+                    std::vector<std::wstring>* buffer,
+                    std::vector<COMDLG_FILTERSPEC>* filterspec) {
+  if (filters.empty()) {
+    COMDLG_FILTERSPEC spec = { L"All Files (*.*)", L"*.*" };
+    filterspec->push_back(spec);
+    return;
   }
 
-  if (include_all_files) {
-    // TODO(zcbenz): Should be localized.
-    ext_desc->push_back(L"All Files (*.*)");
-    file_ext->push_back(L"*.*");
+  buffer->reserve(filters.size() * 2);
+  for (size_t i = 0; i < filters.size(); ++i) {
+    const Filter& filter = filters[i];
 
-    COMDLG_FILTERSPEC spec = {
-      (*ext_desc)[ext_desc->size() - 1].c_str(),
-      (*file_ext)[file_ext->size() - 1].c_str(),
-    };
-    file_types->push_back(spec);
+    COMDLG_FILTERSPEC spec;
+    buffer->push_back(base::UTF8ToWide(filter.first));
+    spec.pszName = buffer->back().c_str();
+
+    std::vector<std::string> extensions(filter.second);
+    for (size_t j = 0; j < extensions.size(); ++j)
+      extensions[j].insert(0, "*.");
+    buffer->push_back(base::UTF8ToWide(JoinString(extensions, ";")));
+    spec.pszSpec = buffer->back().c_str();
+
+    filterspec->push_back(spec);
   }
 }
 
@@ -135,44 +63,36 @@ void FormatFilterForExtensions(
 template <typename T>
 class FileDialog {
  public:
-  FileDialog(const base::FilePath& default_path,
-             const std::string title,
-             int options,
-             const std::vector<std::wstring>& file_ext,
-             const std::vector<std::wstring>& desc_ext)
-      : file_ext_(file_ext),
-        desc_ext_(desc_ext) {
-    std::vector<COMDLG_FILTERSPEC> filters;
-    FormatFilterForExtensions(&file_ext_, &desc_ext_, true, &filters);
-
+  FileDialog(const base::FilePath& default_path, const std::string& title,
+             const Filters& filters, int options) {
     std::wstring file_part;
     if (!IsDirectory(default_path))
       file_part = default_path.BaseName().value();
 
-    dialog_.reset(new T(
-        file_part.c_str(),
-        options,
-        NULL,
-        filters.data(),
-        filters.size()));
+    std::vector<std::wstring> buffer;
+    std::vector<COMDLG_FILTERSPEC> filterspec;
+    ConvertFilters(filters, &buffer, &filterspec);
+
+    dialog_.reset(new T(file_part.c_str(), options, NULL,
+                        filterspec.data(), filterspec.size()));
 
     if (!title.empty())
-      GetPtr()->SetTitle(UTF8ToUTF16(title).c_str());
+      GetPtr()->SetTitle(base::UTF8ToUTF16(title).c_str());
 
     SetDefaultFolder(default_path);
   }
 
   bool Show(atom::NativeWindow* parent_window) {
     atom::NativeWindow::DialogScope dialog_scope(parent_window);
-    HWND window = parent_window ? parent_window->GetNativeWindow() : NULL;
+    HWND window = parent_window ? static_cast<atom::NativeWindowViews*>(
+        parent_window)->GetAcceleratedWidget() :
+        NULL;
     return dialog_->DoModal(window) == IDOK;
   }
 
   T* GetDialog() { return dialog_.get(); }
 
   IFileDialog* GetPtr() const { return dialog_->GetPtr(); }
-
-  const std::vector<std::wstring> file_ext() const { return file_ext_; }
 
  private:
   // Set up the initial directory for the dialog.
@@ -186,23 +106,64 @@ class FileDialog {
                                              NULL,
                                              IID_PPV_ARGS(&folder_item));
     if (SUCCEEDED(hr))
-      GetPtr()->SetDefaultFolder(folder_item);
+      GetPtr()->SetFolder(folder_item);
   }
 
   scoped_ptr<T> dialog_;
 
-  std::vector<std::wstring> file_ext_;
-  std::vector<std::wstring> desc_ext_;
-  std::vector<COMDLG_FILTERSPEC> filters_;
-
   DISALLOW_COPY_AND_ASSIGN(FileDialog);
 };
+
+struct RunState {
+  base::Thread* dialog_thread;
+  base::MessageLoop* ui_message_loop;
+};
+
+bool CreateDialogThread(RunState* run_state) {
+  base::Thread* thread = new base::Thread(ATOM_PRODUCT_NAME "FileDialogThread");
+  thread->init_com_with_mta(false);
+  if (!thread->Start())
+    return false;
+
+  run_state->dialog_thread = thread;
+  run_state->ui_message_loop = base::MessageLoop::current();
+  return true;
+}
+
+void RunOpenDialogInNewThread(const RunState& run_state,
+                              atom::NativeWindow* parent,
+                              const std::string& title,
+                              const base::FilePath& default_path,
+                              const Filters& filters,
+                              int properties,
+                              const OpenDialogCallback& callback) {
+  std::vector<base::FilePath> paths;
+  bool result = ShowOpenDialog(parent, title, default_path, filters, properties,
+                               &paths);
+  run_state.ui_message_loop->PostTask(FROM_HERE,
+                                      base::Bind(callback, result, paths));
+  run_state.ui_message_loop->DeleteSoon(FROM_HERE, run_state.dialog_thread);
+}
+
+void RunSaveDialogInNewThread(const RunState& run_state,
+                              atom::NativeWindow* parent,
+                              const std::string& title,
+                              const base::FilePath& default_path,
+                              const Filters& filters,
+                              const SaveDialogCallback& callback) {
+  base::FilePath path;
+  bool result = ShowSaveDialog(parent, title, default_path, filters, &path);
+  run_state.ui_message_loop->PostTask(FROM_HERE,
+                                      base::Bind(callback, result, path));
+  run_state.ui_message_loop->DeleteSoon(FROM_HERE, run_state.dialog_thread);
+}
 
 }  // namespace
 
 bool ShowOpenDialog(atom::NativeWindow* parent_window,
                     const std::string& title,
                     const base::FilePath& default_path,
+                    const Filters& filters,
                     int properties,
                     std::vector<base::FilePath>* paths) {
   int options = FOS_FORCEFILESYSTEM | FOS_FILEMUSTEXIST;
@@ -212,11 +173,7 @@ bool ShowOpenDialog(atom::NativeWindow* parent_window,
     options |= FOS_ALLOWMULTISELECT;
 
   FileDialog<CShellFileOpenDialog> open_dialog(
-      default_path,
-      title,
-      options,
-      std::vector<std::wstring>(),
-      std::vector<std::wstring>());
+      default_path, title, filters, options);
   if (!open_dialog.Show(parent_window))
     return false;
 
@@ -250,70 +207,79 @@ bool ShowOpenDialog(atom::NativeWindow* parent_window,
   return true;
 }
 
-void ShowOpenDialog(atom::NativeWindow* parent_window,
+void ShowOpenDialog(atom::NativeWindow* parent,
                     const std::string& title,
                     const base::FilePath& default_path,
+                    const Filters& filters,
                     int properties,
                     const OpenDialogCallback& callback) {
-  std::vector<base::FilePath> paths;
-  bool result = ShowOpenDialog(parent_window,
-                               title,
-                               default_path,
-                               properties,
-                               &paths);
-  callback.Run(result, paths);
+  RunState run_state;
+  if (!CreateDialogThread(&run_state)) {
+    callback.Run(false, std::vector<base::FilePath>());
+    return;
+  }
+
+  run_state.dialog_thread->message_loop()->PostTask(
+      FROM_HERE,
+      base::Bind(&RunOpenDialogInNewThread, run_state, parent, title,
+                 default_path, filters, properties, callback));
 }
 
 bool ShowSaveDialog(atom::NativeWindow* parent_window,
                     const std::string& title,
                     const base::FilePath& default_path,
+                    const Filters& filters,
                     base::FilePath* path) {
-  // TODO(zcbenz): Accept custom filters from caller.
-  std::vector<std::wstring> file_ext;
-  std::wstring extension = default_path.Extension();
-  if (!extension.empty())
-    file_ext.push_back(extension.insert(0, L"*"));
-
   FileDialog<CShellFileSaveDialog> save_dialog(
-      default_path,
-      title,
-      FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST | FOS_OVERWRITEPROMPT,
-      file_ext,
-      std::vector<std::wstring>());
+      default_path, title, filters,
+      FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST | FOS_OVERWRITEPROMPT);
   if (!save_dialog.Show(parent_window))
     return false;
 
-  wchar_t file_name[MAX_PATH];
-  HRESULT hr = save_dialog.GetDialog()->GetFilePath(file_name, MAX_PATH);
+  wchar_t buffer[MAX_PATH];
+  HRESULT hr = save_dialog.GetDialog()->GetFilePath(buffer, MAX_PATH);
   if (FAILED(hr))
     return false;
 
+  std::string file_name = base::WideToUTF8(std::wstring(buffer));
+
   // Append extension according to selected filter.
-  UINT filter_index = 1;
-  save_dialog.GetPtr()->GetFileTypeIndex(&filter_index);
-  std::wstring selected_filter = save_dialog.file_ext()[filter_index - 1];
-  if (selected_filter != L"*.*") {
-    std::wstring result = file_name;
-    if (!EndsWith(result, selected_filter.substr(1), false)) {
-      if (result[result.length() - 1] != L'.')
-        result.push_back(L'.');
-      result.append(selected_filter.substr(2));
-      *path = base::FilePath(result);
-      return true;
+  if (!filters.empty()) {
+    UINT filter_index = 1;
+    save_dialog.GetPtr()->GetFileTypeIndex(&filter_index);
+    const Filter& filter = filters[filter_index - 1];
+
+    bool matched = false;
+    for (size_t i = 0; i < filter.second.size(); ++i) {
+      if (EndsWith(file_name, filter.second[i], false)) {
+        matched = true;
+        break;;
+      }
     }
+
+    if (!matched && !filter.second.empty())
+      file_name += ("." + filter.second[0]);
   }
 
-  *path = base::FilePath(file_name);
+  *path = base::FilePath(base::UTF8ToUTF16(file_name));
   return true;
 }
 
-void ShowSaveDialog(atom::NativeWindow* parent_window,
+void ShowSaveDialog(atom::NativeWindow* parent,
                     const std::string& title,
                     const base::FilePath& default_path,
+                    const Filters& filters,
                     const SaveDialogCallback& callback) {
-  base::FilePath path;
-  bool result = ShowSaveDialog(parent_window, title, default_path, &path);
-  callback.Run(result, path);
+  RunState run_state;
+  if (!CreateDialogThread(&run_state)) {
+    callback.Run(false, base::FilePath());
+    return;
+  }
+
+  run_state.dialog_thread->message_loop()->PostTask(
+      FROM_HERE,
+      base::Bind(&RunSaveDialogInNewThread, run_state, parent, title,
+                 default_path, filters, callback));
 }
 
 }  // namespace file_dialog

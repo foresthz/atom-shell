@@ -1,293 +1,32 @@
 {
   'variables': {
-    'includes': [
-      'vendor/native_mate/native_mate_files.gypi',
-    ],
-    'project_name': 'atom',
-    'product_name': 'Atom',
-    'framework_name': 'Atom Framework',
-    'app_sources': [
-      'atom/app/atom_main.cc',
-      'atom/app/atom_main.h',
-    ],
-    'bundle_sources': [
-      'atom/browser/resources/mac/atom.icns',
-    ],
-    'coffee_sources': [
-      'atom/browser/api/lib/app.coffee',
-      'atom/browser/api/lib/atom-delegate.coffee',
-      'atom/browser/api/lib/auto-updater.coffee',
-      'atom/browser/api/lib/browser-window.coffee',
-      'atom/browser/api/lib/dialog.coffee',
-      'atom/browser/api/lib/ipc.coffee',
-      'atom/browser/api/lib/menu.coffee',
-      'atom/browser/api/lib/menu-item.coffee',
-      'atom/browser/api/lib/power-monitor.coffee',
-      'atom/browser/api/lib/protocol.coffee',
-      'atom/browser/api/lib/tray.coffee',
-      'atom/browser/api/lib/web-contents.coffee',
-      'atom/browser/lib/init.coffee',
-      'atom/browser/lib/objects-registry.coffee',
-      'atom/browser/lib/rpc-server.coffee',
-      'atom/common/api/lib/callbacks-registry.coffee',
-      'atom/common/api/lib/clipboard.coffee',
-      'atom/common/api/lib/crash-reporter.coffee',
-      'atom/common/api/lib/id-weak-map.coffee',
-      'atom/common/api/lib/screen.coffee',
-      'atom/common/api/lib/shell.coffee',
-      'atom/common/lib/init.coffee',
-      'atom/renderer/lib/init.coffee',
-      'atom/renderer/lib/inspector.coffee',
-      'atom/renderer/lib/override.coffee',
-      'atom/renderer/api/lib/ipc.coffee',
-      'atom/renderer/api/lib/remote.coffee',
-      'atom/renderer/api/lib/web-view.coffee',
-    ],
-    'lib_sources': [
-      'atom/app/atom_main_delegate.cc',
-      'atom/app/atom_main_delegate.h',
-      'atom/app/atom_main_delegate_mac.mm',
-      'atom/browser/api/atom_api_app.cc',
-      'atom/browser/api/atom_api_app.h',
-      'atom/browser/api/atom_api_auto_updater.cc',
-      'atom/browser/api/atom_api_auto_updater.h',
-      'atom/browser/api/atom_api_dialog.cc',
-      'atom/browser/api/atom_api_menu.cc',
-      'atom/browser/api/atom_api_menu.h',
-      'atom/browser/api/atom_api_menu_gtk.cc',
-      'atom/browser/api/atom_api_menu_gtk.h',
-      'atom/browser/api/atom_api_menu_mac.h',
-      'atom/browser/api/atom_api_menu_mac.mm',
-      'atom/browser/api/atom_api_menu_win.cc',
-      'atom/browser/api/atom_api_menu_win.h',
-      'atom/browser/api/atom_api_power_monitor.cc',
-      'atom/browser/api/atom_api_power_monitor.h',
-      'atom/browser/api/atom_api_protocol.cc',
-      'atom/browser/api/atom_api_protocol.h',
-      'atom/browser/api/atom_api_tray.cc',
-      'atom/browser/api/atom_api_tray.h',
-      'atom/browser/api/atom_api_web_contents.cc',
-      'atom/browser/api/atom_api_web_contents.h',
-      'atom/browser/api/atom_api_window.cc',
-      'atom/browser/api/atom_api_window.h',
-      'atom/browser/api/event.cc',
-      'atom/browser/api/event.h',
-      'atom/browser/api/event_emitter.cc',
-      'atom/browser/api/event_emitter.h',
-      'atom/browser/auto_updater.cc',
-      'atom/browser/auto_updater.h',
-      'atom/browser/auto_updater_delegate.h',
-      'atom/browser/auto_updater_linux.cc',
-      'atom/browser/auto_updater_mac.mm',
-      'atom/browser/auto_updater_win.cc',
-      'atom/browser/atom_browser_client.cc',
-      'atom/browser/atom_browser_client.h',
-      'atom/browser/atom_browser_context.cc',
-      'atom/browser/atom_browser_context.h',
-      'atom/browser/atom_browser_main_parts.cc',
-      'atom/browser/atom_browser_main_parts.h',
-      'atom/browser/atom_browser_main_parts_mac.mm',
-      'atom/browser/atom_javascript_dialog_manager.cc',
-      'atom/browser/atom_javascript_dialog_manager.h',
-      'atom/browser/browser.cc',
-      'atom/browser/browser.h',
-      'atom/browser/browser_linux.cc',
-      'atom/browser/browser_mac.mm',
-      'atom/browser/browser_win.cc',
-      'atom/browser/browser_observer.h',
-      'atom/browser/mac/atom_application.h',
-      'atom/browser/mac/atom_application.mm',
-      'atom/browser/mac/atom_application_delegate.h',
-      'atom/browser/mac/atom_application_delegate.mm',
-      'atom/browser/native_window.cc',
-      'atom/browser/native_window.h',
-      'atom/browser/native_window_gtk.cc',
-      'atom/browser/native_window_gtk.h',
-      'atom/browser/native_window_mac.h',
-      'atom/browser/native_window_mac.mm',
-      'atom/browser/native_window_win.cc',
-      'atom/browser/native_window_win.h',
-      'atom/browser/native_window_observer.h',
-      'atom/browser/net/adapter_request_job.cc',
-      'atom/browser/net/adapter_request_job.h',
-      'atom/browser/net/atom_url_request_context_getter.cc',
-      'atom/browser/net/atom_url_request_context_getter.h',
-      'atom/browser/net/atom_url_request_job_factory.cc',
-      'atom/browser/net/atom_url_request_job_factory.h',
-      'atom/browser/net/url_request_string_job.cc',
-      'atom/browser/net/url_request_string_job.h',
-      'atom/browser/ui/accelerator_util.cc',
-      'atom/browser/ui/accelerator_util.h',
-      'atom/browser/ui/accelerator_util_gtk.cc',
-      'atom/browser/ui/accelerator_util_mac.mm',
-      'atom/browser/ui/accelerator_util_win.cc',
-      'atom/browser/ui/cocoa/atom_menu_controller.h',
-      'atom/browser/ui/cocoa/atom_menu_controller.mm',
-      'atom/browser/ui/cocoa/event_processing_window.h',
-      'atom/browser/ui/cocoa/event_processing_window.mm',
-      'atom/browser/ui/file_dialog.h',
-      'atom/browser/ui/file_dialog_gtk.cc',
-      'atom/browser/ui/file_dialog_mac.mm',
-      'atom/browser/ui/file_dialog_win.cc',
-      'atom/browser/ui/gtk/app_indicator_icon.cc',
-      'atom/browser/ui/gtk/app_indicator_icon.h',
-      'atom/browser/ui/gtk/status_icon.cc',
-      'atom/browser/ui/gtk/status_icon.h',
-      'atom/browser/ui/message_box.h',
-      'atom/browser/ui/message_box_gtk.cc',
-      'atom/browser/ui/message_box_mac.mm',
-      'atom/browser/ui/message_box_win.cc',
-      'atom/browser/ui/tray_icon.cc',
-      'atom/browser/ui/tray_icon.h',
-      'atom/browser/ui/tray_icon_gtk.cc',
-      'atom/browser/ui/tray_icon_cocoa.h',
-      'atom/browser/ui/tray_icon_cocoa.mm',
-      'atom/browser/ui/tray_icon_observer.h',
-      'atom/browser/ui/tray_icon_win.cc',
-      'atom/browser/ui/win/menu_2.cc',
-      'atom/browser/ui/win/menu_2.h',
-      'atom/browser/ui/win/native_menu_win.cc',
-      'atom/browser/ui/win/native_menu_win.h',
-      'atom/browser/ui/win/notify_icon_host.cc',
-      'atom/browser/ui/win/notify_icon_host.h',
-      'atom/browser/ui/win/notify_icon.cc',
-      'atom/browser/ui/win/notify_icon.h',
-      'atom/browser/window_list.cc',
-      'atom/browser/window_list.h',
-      'atom/browser/window_list_observer.h',
-      'atom/common/api/api_messages.cc',
-      'atom/common/api/api_messages.h',
-      'atom/common/api/atom_api_clipboard.cc',
-      'atom/common/api/atom_api_crash_reporter.cc',
-      'atom/common/api/atom_api_id_weak_map.cc',
-      'atom/common/api/atom_api_id_weak_map.h',
-      'atom/common/api/atom_api_screen.cc',
-      'atom/common/api/atom_api_screen.h',
-      'atom/common/api/atom_api_shell.cc',
-      'atom/common/api/atom_api_v8_util.cc',
-      'atom/common/api/atom_bindings.cc',
-      'atom/common/api/atom_bindings.h',
-      'atom/common/api/atom_extensions.cc',
-      'atom/common/api/atom_extensions.h',
-      'atom/common/api/object_life_monitor.cc',
-      'atom/common/api/object_life_monitor.h',
-      'atom/common/browser_v8_locker.cc',
-      'atom/common/browser_v8_locker.h',
-      'atom/common/crash_reporter/crash_reporter.cc',
-      'atom/common/crash_reporter/crash_reporter.h',
-      'atom/common/crash_reporter/crash_reporter_linux.cc',
-      'atom/common/crash_reporter/crash_reporter_linux.h',
-      'atom/common/crash_reporter/crash_reporter_mac.h',
-      'atom/common/crash_reporter/crash_reporter_mac.mm',
-      'atom/common/crash_reporter/crash_reporter_win.cc',
-      'atom/common/crash_reporter/crash_reporter_win.h',
-      'atom/common/crash_reporter/linux/crash_dump_handler.cc',
-      'atom/common/crash_reporter/linux/crash_dump_handler.h',
-      'atom/common/crash_reporter/win/crash_service.cc',
-      'atom/common/crash_reporter/win/crash_service.h',
-      'atom/common/crash_reporter/win/crash_service_main.cc',
-      'atom/common/crash_reporter/win/crash_service_main.h',
-      'atom/common/draggable_region.cc',
-      'atom/common/draggable_region.h',
-      'atom/common/linux/application_info.cc',
-      'atom/common/native_mate_converters/file_path_converter.h',
-      'atom/common/native_mate_converters/function_converter.h',
-      'atom/common/native_mate_converters/gurl_converter.h',
-      'atom/common/native_mate_converters/image_converter.cc',
-      'atom/common/native_mate_converters/image_converter.h',
-      'atom/common/native_mate_converters/string16_converter.h',
-      'atom/common/native_mate_converters/v8_value_converter.cc',
-      'atom/common/native_mate_converters/v8_value_converter.h',
-      'atom/common/native_mate_converters/value_converter.cc',
-      'atom/common/native_mate_converters/value_converter.h',
-      'atom/common/node_bindings.cc',
-      'atom/common/node_bindings.h',
-      'atom/common/node_bindings_linux.cc',
-      'atom/common/node_bindings_linux.h',
-      'atom/common/node_bindings_mac.cc',
-      'atom/common/node_bindings_mac.h',
-      'atom/common/node_bindings_win.cc',
-      'atom/common/node_bindings_win.h',
-      'atom/common/node_includes.h',
-      'atom/common/options_switches.cc',
-      'atom/common/options_switches.h',
-      'atom/common/platform_util.h',
-      'atom/common/platform_util_linux.cc',
-      'atom/common/platform_util_mac.mm',
-      'atom/common/platform_util_win.cc',
-      'atom/renderer/api/atom_api_renderer_ipc.cc',
-      'atom/renderer/api/atom_renderer_bindings.cc',
-      'atom/renderer/api/atom_renderer_bindings.h',
-      'atom/renderer/api/atom_api_web_view.cc',
-      'atom/renderer/api/atom_api_web_view.h',
-      'atom/renderer/atom_render_view_observer.cc',
-      'atom/renderer/atom_render_view_observer.h',
-      'atom/renderer/atom_renderer_client.cc',
-      'atom/renderer/atom_renderer_client.h',
-      'chrome/browser/ui/gtk/event_utils.cc',
-      'chrome/browser/ui/gtk/event_utils.h',
-      'chrome/browser/ui/gtk/gtk_custom_menu.cc',
-      'chrome/browser/ui/gtk/gtk_custom_menu.h',
-      'chrome/browser/ui/gtk/gtk_custom_menu_item.cc',
-      'chrome/browser/ui/gtk/gtk_custom_menu_item.h',
-      'chrome/browser/ui/gtk/gtk_util.cc',
-      'chrome/browser/ui/gtk/gtk_util.h',
-      'chrome/browser/ui/gtk/gtk_window_util.cc',
-      'chrome/browser/ui/gtk/gtk_window_util.h',
-      'chrome/browser/ui/gtk/menu_gtk.cc',
-      'chrome/browser/ui/gtk/menu_gtk.h',
-      'chrome/browser/ui/views/status_icons/status_tray_state_changer_win.cc',
-      'chrome/browser/ui/views/status_icons/status_tray_state_changer_win.h',
-      '<@(native_mate_files)',
-    ],
-    'framework_sources': [
-      'atom/app/atom_library_main.cc',
-      'atom/app/atom_library_main.h',
-    ],
-    'locales': [
-      'am', 'ar', 'bg', 'bn', 'ca', 'cs', 'da', 'de', 'el', 'en-GB',
-      'en-US', 'es-419', 'es', 'et', 'fa', 'fi', 'fil', 'fr', 'gu', 'he',
-      'hi', 'hr', 'hu', 'id', 'it', 'ja', 'kn', 'ko', 'lt', 'lv',
-      'ml', 'mr', 'ms', 'nb', 'nl', 'pl', 'pt-BR', 'pt-PT', 'ro', 'ru',
-      'sk', 'sl', 'sr', 'sv', 'sw', 'ta', 'te', 'th', 'tr', 'uk',
-      'vi', 'zh-CN', 'zh-TW',
-    ],
-    'atom_source_root': '<!(python tools/atom_source_root.py)',
-    'conditions': [
-      ['OS=="win"', {
-        'app_sources': [
-          'atom/browser/resources/win/resource.h',
-          'atom/browser/resources/win/atom.ico',
-          'atom/browser/resources/win/atom.rc',
-          '<(libchromiumcontent_src_dir)/content/app/startup_helper_win.cc',
-        ],
-      }],  # OS=="win"
-      ['OS=="mac"', {
-        'apply_locales_cmd': ['python', 'tools/mac/apply_locales.py'],
-      }],  # OS=="mac"
-    ],
+    'project_name%': 'electron',
+    'product_name%': 'Electron',
+    'company_name%': 'GitHub, Inc',
+    'company_abbr%': 'github',
+    'version%': '0.25.1',
+
+    'atom_source_root': '<!(["python", "tools/atom_source_root.py"])',
   },
+  'includes': [
+    'filenames.gypi',
+    'vendor/native_mate/native_mate_files.gypi',
+  ],
   'target_defaults': {
+    'defines': [
+      'ATOM_PRODUCT_NAME="<(product_name)"',
+      'ATOM_PROJECT_NAME="<(project_name)"',
+    ],
     'mac_framework_dirs': [
       '<(atom_source_root)/external_binaries',
     ],
-    'includes': [
-       # Rules for excluding e.g. foo_win.cc from the build on non-Windows.
-      'filename_rules.gypi',
-    ],
-    'configurations': {
-      'Debug': {
-        'defines': [ 'DEBUG' ],
-        'cflags': [ '-g', '-O0' ],
-      },
-    },
   },
   'targets': [
     {
       'target_name': '<(project_name)',
       'type': 'executable',
       'dependencies': [
-        'generated_sources',
+        'compile_coffee',
         '<(project_name)_lib',
       ],
       'sources': [
@@ -308,6 +47,7 @@
             '<(project_name)_helper',
           ],
           'xcode_settings': {
+            'ATOM_BUNDLE_ID': 'com.<(company_abbr).<(project_name)',
             'INFOPLIST_FILE': 'atom/browser/resources/mac/Info.plist',
             'LD_RUNPATH_SEARCH_PATHS': [
               '@executable_path/../Frameworks',
@@ -321,7 +61,7 @@
               'destination': '<(PRODUCT_DIR)/<(product_name).app/Contents/Frameworks',
               'files': [
                 '<(PRODUCT_DIR)/<(product_name) Helper.app',
-                '<(PRODUCT_DIR)/<(framework_name).framework',
+                '<(PRODUCT_DIR)/<(product_name) Framework.framework',
                 'external_binaries/Squirrel.framework',
                 'external_binaries/ReactiveCocoa.framework',
                 'external_binaries/Mantle.framework',
@@ -357,6 +97,7 @@
             {
               'postbuild_name': 'Make Empty Localizations',
               'variables': {
+                'apply_locales_cmd': ['python', 'tools/mac/apply_locales.py'],
                 'locale_dirs': [
                   '>!@(<(apply_locales_cmd) -d ZZLOCALE.lproj <(locales))',
                 ],
@@ -373,17 +114,42 @@
           ],
         }],  # OS!="mac"
         ['OS=="win"', {
+          'msvs_settings': {
+            'VCLinkerTool': {
+              'AdditionalOptions': [
+                # Force linking even though we have duplicate symbols between
+                # BoringSSL and OpenSSL.
+                '/FORCE:MULTIPLE',
+              ],
+            },
+          },
           'copies': [
             {
+              'variables': {
+                'conditions': [
+                  ['libchromiumcontent_component', {
+                    'copied_libraries': [
+                      '<@(libchromiumcontent_shared_libraries)',
+                      '<@(libchromiumcontent_shared_v8_libraries)',
+                    ],
+                  }, {
+                    'copied_libraries': [],
+                  }],
+                ],
+              },
               'destination': '<(PRODUCT_DIR)',
               'files': [
-                '<(libchromiumcontent_library_dir)/chromiumcontent.dll',
-                '<(libchromiumcontent_library_dir)/ffmpegsumo.dll',
-                '<(libchromiumcontent_library_dir)/icudt.dll',
-                '<(libchromiumcontent_library_dir)/libEGL.dll',
-                '<(libchromiumcontent_library_dir)/libGLESv2.dll',
-                '<(libchromiumcontent_resources_dir)/content_shell.pak',
-                'external_binaries/d3dcompiler_43.dll',
+                '<@(copied_libraries)',
+                '<(libchromiumcontent_dir)/ffmpegsumo.dll',
+                '<(libchromiumcontent_dir)/libEGL.dll',
+                '<(libchromiumcontent_dir)/libGLESv2.dll',
+                '<(libchromiumcontent_dir)/icudtl.dat',
+                '<(libchromiumcontent_dir)/content_resources_200_percent.pak',
+                '<(libchromiumcontent_dir)/content_shell.pak',
+                '<(libchromiumcontent_dir)/ui_resources_200_percent.pak',
+                '<(libchromiumcontent_dir)/natives_blob.bin',
+                '<(libchromiumcontent_dir)/snapshot_blob.bin',
+                'external_binaries/d3dcompiler_47.dll',
                 'external_binaries/xinput1_3.dll',
               ],
             },
@@ -398,11 +164,29 @@
         ['OS=="linux"', {
           'copies': [
             {
+              'variables': {
+                'conditions': [
+                  ['libchromiumcontent_component', {
+                    'copied_libraries': [
+                      '<(PRODUCT_DIR)/lib/libnode.so',
+                      '<@(libchromiumcontent_shared_libraries)',
+                      '<@(libchromiumcontent_shared_v8_libraries)',
+                    ],
+                  }, {
+                    'copied_libraries': [
+                      '<(PRODUCT_DIR)/lib/libnode.so',
+                    ],
+                  }],
+                ],
+              },
               'destination': '<(PRODUCT_DIR)',
               'files': [
-                '<(libchromiumcontent_library_dir)/libchromiumcontent.so',
-                '<(libchromiumcontent_library_dir)/libffmpegsumo.so',
-                '<(libchromiumcontent_resources_dir)/content_shell.pak',
+                '<@(copied_libraries)',
+                '<(libchromiumcontent_dir)/libffmpegsumo.so',
+                '<(libchromiumcontent_dir)/icudtl.dat',
+                '<(libchromiumcontent_dir)/content_shell.pak',
+                '<(libchromiumcontent_dir)/natives_blob.bin',
+                '<(libchromiumcontent_dir)/snapshot_blob.bin',
               ],
             },
             {
@@ -419,24 +203,41 @@
       'target_name': '<(project_name)_lib',
       'type': 'static_library',
       'dependencies': [
+        'atom_coffee2c',
         'vendor/brightray/brightray.gyp:brightray',
-        'vendor/node/node.gyp:node_lib',
+        'vendor/node/node.gyp:node',
+      ],
+      'defines': [
+        # This is defined in skia/skia_common.gypi.
+        'SK_SUPPORT_LEGACY_GETTOPDEVICE',
+        # Disable warnings for g_settings_list_schemas.
+        'GLIB_DISABLE_DEPRECATION_WARNINGS',
+        # Defined in Chromium but not exposed in its gyp file.
+        'V8_USE_EXTERNAL_STARTUP_DATA',
+        'ENABLE_PLUGINS',
+        # Needed by Node.
+        'NODE_WANT_INTERNALS=1',
       ],
       'sources': [
         '<@(lib_sources)',
       ],
       'include_dirs': [
         '.',
+        'chromium_src',
         'vendor/brightray',
         'vendor/native_mate',
+        # Include atom_natives.h.
+        '<(SHARED_INTERMEDIATE_DIR)',
         # Include directories for uv and node.
         'vendor/node/src',
         'vendor/node/deps/http_parser',
         'vendor/node/deps/uv/include',
         # The `node.h` is using `#include"v8.h"`.
-        'vendor/brightray/vendor/download/libchromiumcontent/src/v8/include',
+        '<(libchromiumcontent_src_dir)/v8/include',
         # The `node.h` is using `#include"ares.h"`.
         'vendor/node/deps/cares/include',
+        # The `third_party/WebKit/Source/platform/weborigin/SchemeRegistry.h` is using `platform/PlatformExport.h`.
+        '<(libchromiumcontent_src_dir)/third_party/WebKit/Source',
       ],
       'direct_dependent_settings': {
         'include_dirs': [
@@ -447,17 +248,31 @@
         'vendor/brightray/brightray.gyp:brightray',
       ],
       'conditions': [
+        ['libchromiumcontent_component', {
+          'link_settings': {
+            'libraries': [ '<@(libchromiumcontent_v8_libraries)' ],
+          },
+        }],
         ['OS=="win"', {
+          'sources': [
+            '<@(lib_sources_win)',
+          ],
           'link_settings': {
             'libraries': [
               '-limm32.lib',
               '-loleacc.lib',
               '-lComdlg32.lib',
               '-lWininet.lib',
-              '<(atom_source_root)/<(libchromiumcontent_library_dir)/chromiumviews.lib',
             ],
           },
           'dependencies': [
+            # Node is built as static_library on Windows, so we also need to
+            # include its dependencies here.
+            'vendor/node/deps/cares/cares.gyp:cares',
+            'vendor/node/deps/http_parser/http_parser.gyp:http_parser',
+            'vendor/node/deps/uv/uv.gyp:libuv',
+            'vendor/node/deps/zlib/zlib.gyp:zlib',
+            # Build with breakpad support.
             'vendor/breakpad/breakpad.gyp:breakpad_handler',
             'vendor/breakpad/breakpad.gyp:breakpad_sender',
           ],
@@ -479,11 +294,12 @@
             ],
           },
           # Required settings of using breakpad.
+          'cflags_cc': [
+            '-Wno-empty-body',
+            '-Wno-reserved-user-defined-literal',
+          ],
           'include_dirs': [
             'vendor/breakpad/src',
-          ],
-          'cflags': [
-            '-Wno-empty-body',
           ],
           'dependencies': [
             'vendor/breakpad/breakpad.gyp:breakpad_client',
@@ -492,150 +308,63 @@
       ],
     },  # target <(product_name)_lib
     {
-      'target_name': 'generated_sources',
+      'target_name': 'compile_coffee',
       'type': 'none',
-      'sources': [
-        '<@(coffee_sources)',
-      ],
-      'rules': [
+      'actions': [
         {
-          'rule_name': 'coffee',
-          'extension': 'coffee',
+          'action_name': 'compile_coffee',
+          'variables': {
+            'conditions': [
+              ['OS=="mac"', {
+                'resources_path': '<(PRODUCT_DIR)/<(product_name).app/Contents/Resources',
+              },{
+                'resources_path': '<(PRODUCT_DIR)/resources',
+              }],
+            ],
+          },
           'inputs': [
-            'script/compile-coffee.py',
+            '<@(coffee_sources)',
           ],
-          'conditions': [
-            ['OS=="mac"', {
-              'outputs': [
-                '<(PRODUCT_DIR)/<(product_name).app/Contents/Resources/<(RULE_INPUT_DIRNAME)/<(RULE_INPUT_ROOT).js',
-              ],
-              'action': [
-                'python',
-                'script/compile-coffee.py',
-                '<(RULE_INPUT_PATH)',
-                '<(PRODUCT_DIR)/<(product_name).app/Contents/Resources/<(RULE_INPUT_DIRNAME)/<(RULE_INPUT_ROOT).js',
-              ],
-            },{  # OS=="mac"
-              'outputs': [
-                '<(PRODUCT_DIR)/resources/<(RULE_INPUT_DIRNAME)/<(RULE_INPUT_ROOT).js',
-              ],
-              'action': [
-                'python',
-                'script/compile-coffee.py',
-                '<(RULE_INPUT_PATH)',
-                '<(PRODUCT_DIR)/resources/<(RULE_INPUT_DIRNAME)/<(RULE_INPUT_ROOT).js',
-              ],
-            }],  # OS=="win" or OS=="linux"
+          'outputs': [
+            '<(resources_path)/atom.asar',
           ],
-        },
+          'action': [
+            'python',
+            'tools/coffee2asar.py',
+            '<@(_outputs)',
+            '<@(_inputs)',
+          ],
+        }
       ],
-    },  # target generated_sources
+    },  # target compile_coffee
     {
-      'target_name': '<(project_name)_dump_symbols',
+      'target_name': 'atom_coffee2c',
       'type': 'none',
-      'dependencies': [
-        '<(project_name)',
+      'actions': [
+        {
+          'action_name': 'atom_coffee2c',
+          'inputs': [
+            '<@(coffee2c_sources)',
+          ],
+          'outputs': [
+            '<(SHARED_INTERMEDIATE_DIR)/atom_natives.h',
+          ],
+          'action': [
+            'python',
+            'tools/coffee2c.py',
+            '<@(_outputs)',
+            '<@(_inputs)',
+          ],
+        }
       ],
-      'conditions': [
-        ['OS=="mac"', {
-          'dependencies': [
-            'vendor/breakpad/breakpad.gyp:dump_syms',
-          ],
-          'actions': [
-            {
-              'action_name': 'Dump Symbols',
-              'inputs': [
-                '<(PRODUCT_DIR)/<(product_name).app/Contents/MacOS/<(product_name)',
-              ],
-              'outputs': [
-                '<(PRODUCT_DIR)/Atom-Shell.breakpad.syms',
-              ],
-              'action': [
-                'python',
-                'tools/posix/generate_breakpad_symbols.py',
-                '--build-dir=<(PRODUCT_DIR)',
-                '--binary=<(PRODUCT_DIR)/<(product_name).app/Contents/MacOS/<(product_name)',
-                '--symbols-dir=<(PRODUCT_DIR)/Atom-Shell.breakpad.syms',
-                '--libchromiumcontent-dir=<(libchromiumcontent_library_dir)',
-                '--clear',
-                '--jobs=16',
-              ],
-            },
-          ],
-        }],  # OS=="mac"
-        ['OS=="win"', {
-          'actions': [
-            {
-              'action_name': 'Dump Symbols',
-              'inputs': [
-                '<(PRODUCT_DIR)/<(project_name).exe',
-              ],
-              'outputs': [
-                '<(PRODUCT_DIR)/Atom-Shell.breakpad.syms',
-              ],
-              'action': [
-                'python',
-                'tools/win/generate_breakpad_symbols.py',
-                '--symbols-dir=<(PRODUCT_DIR)/Atom-Shell.breakpad.syms',
-                '--jobs=16',
-                '<(PRODUCT_DIR)',
-                '<(libchromiumcontent_library_dir)',
-              ],
-            },
-          ],
-        }],  # OS=="win"
-        ['OS=="linux"', {
-          'dependencies': [
-            'vendor/breakpad/breakpad.gyp:dump_syms',
-          ],
-          'actions': [
-            {
-              'action_name': 'Dump Symbols',
-              'inputs': [
-                '<(PRODUCT_DIR)/<(project_name)',
-              ],
-              'outputs': [
-                '<(PRODUCT_DIR)/Atom-Shell.breakpad.syms',
-              ],
-              'action': [
-                'python',
-                'tools/posix/generate_breakpad_symbols.py',
-                '--build-dir=<(PRODUCT_DIR)',
-                '--binary=<(PRODUCT_DIR)/<(project_name)',
-                '--symbols-dir=<(PRODUCT_DIR)/Atom-Shell.breakpad.syms',
-                '--libchromiumcontent-dir=<(libchromiumcontent_library_dir)',
-                '--clear',
-                '--jobs=16',
-              ],
-            },
-            {
-              'action_name': 'Strip Binary',
-              'inputs': [
-                '<(PRODUCT_DIR)/libchromiumcontent.so',
-                '<(PRODUCT_DIR)/libffmpegsumo.so',
-                '<(PRODUCT_DIR)/<(project_name)',
-                # Add the syms folder as input would force this action to run
-                # after the 'Dump Symbols' action. And since it is a folder,
-                # it would be ignored by the 'strip' command.
-                '<(PRODUCT_DIR)/Atom-Shell.breakpad.syms',
-              ],
-              'outputs': [
-                # Gyp action requires a output file, add a fake one here.
-                '<(PRODUCT_DIR)/dummy_file',
-              ],
-              'action': [ 'strip', '<@(_inputs)' ],
-            },
-          ],
-        }],  # OS=="linux"
-      ],
-    },  # target <(project_name>_dump_symbols
+    },  # target atom_coffee2c
   ],
   'conditions': [
     ['OS=="mac"', {
       'targets': [
         {
           'target_name': '<(project_name)_framework',
-          'product_name': '<(framework_name)',
+          'product_name': '<(product_name) Framework',
           'type': 'shared_library',
           'dependencies': [
             '<(project_name)_lib',
@@ -646,7 +375,7 @@
           'include_dirs': [
             '.',
             'vendor',
-            '<(libchromiumcontent_include_dir)',
+            '<(libchromiumcontent_src_dir)',
           ],
           'export_dependent_settings': [
             '<(project_name)_lib',
@@ -654,6 +383,7 @@
           'link_settings': {
             'libraries': [
               '$(SDKROOT)/System/Library/Frameworks/Carbon.framework',
+              '$(SDKROOT)/System/Library/Frameworks/QuartzCore.framework',
               'external_binaries/Squirrel.framework',
               'external_binaries/ReactiveCocoa.framework',
               'external_binaries/Mantle.framework',
@@ -662,14 +392,15 @@
           'mac_bundle': 1,
           'mac_bundle_resources': [
             'atom/common/resources/mac/MainMenu.xib',
-            '<(libchromiumcontent_resources_dir)/content_shell.pak',
+            '<(libchromiumcontent_dir)/content_shell.pak',
+            '<(libchromiumcontent_dir)/icudtl.dat',
+            '<(libchromiumcontent_dir)/natives_blob.bin',
+            '<(libchromiumcontent_dir)/snapshot_blob.bin',
           ],
           'xcode_settings': {
+            'ATOM_BUNDLE_ID': 'com.<(company_abbr).<(project_name).framework',
             'INFOPLIST_FILE': 'atom/common/resources/mac/Info.plist',
-            'LIBRARY_SEARCH_PATHS': [
-              '<(libchromiumcontent_library_dir)',
-            ],
-            'LD_DYLIB_INSTALL_NAME': '@rpath/<(framework_name).framework/<(framework_name)',
+            'LD_DYLIB_INSTALL_NAME': '@rpath/<(product_name) Framework.framework/<(product_name) Framework',
             'LD_RUNPATH_SEARCH_PATHS': [
               '@loader_path/Libraries',
             ],
@@ -679,14 +410,29 @@
           },
           'copies': [
             {
-              'destination': '<(PRODUCT_DIR)/<(framework_name).framework/Versions/A/Libraries',
+              'variables': {
+                'conditions': [
+                  ['libchromiumcontent_component', {
+                    'copied_libraries': [
+                      '<(PRODUCT_DIR)/libnode.dylib',
+                      '<@(libchromiumcontent_shared_libraries)',
+                      '<@(libchromiumcontent_shared_v8_libraries)',
+                    ],
+                  }, {
+                    'copied_libraries': [
+                      '<(PRODUCT_DIR)/libnode.dylib',
+                    ],
+                  }],
+                ],
+              },
+              'destination': '<(PRODUCT_DIR)/<(product_name) Framework.framework/Versions/A/Libraries',
               'files': [
-                '<(libchromiumcontent_library_dir)/ffmpegsumo.so',
-                '<(libchromiumcontent_library_dir)/libchromiumcontent.dylib',
+                '<@(copied_libraries)',
+                '<(libchromiumcontent_dir)/ffmpegsumo.so',
               ],
             },
             {
-              'destination': '<(PRODUCT_DIR)/<(framework_name).framework/Versions/A/Resources',
+              'destination': '<(PRODUCT_DIR)/<(product_name) Framework.framework/Versions/A/Resources',
               'files': [
                 '<(PRODUCT_DIR)/Inspector',
                 '<(PRODUCT_DIR)/crash_report_sender.app',
@@ -695,10 +441,20 @@
           ],
           'postbuilds': [
             {
+              'postbuild_name': 'Fix path of libnode',
+              'action': [
+                'install_name_tool',
+                '-change',
+                '/usr/local/lib/libnode.dylib',
+                '@rpath/libnode.dylib',
+                '${BUILT_PRODUCTS_DIR}/<(product_name) Framework.framework/Versions/A/<(product_name) Framework',
+              ],
+            },
+            {
               'postbuild_name': 'Add symlinks for framework subdirectories',
               'action': [
                 'tools/mac/create-framework-subdir-symlinks.sh',
-                '<(framework_name)',
+                '<(product_name) Framework',
                 'Libraries',
                 'Frameworks',
               ],
@@ -720,6 +476,7 @@
           ],
           'mac_bundle': 1,
           'xcode_settings': {
+            'ATOM_BUNDLE_ID': 'com.<(company_abbr).<(project_name).helper',
             'INFOPLIST_FILE': 'atom/renderer/resources/mac/Info.plist',
             'LD_RUNPATH_SEARCH_PATHS': [
               '@executable_path/../../..',
@@ -736,13 +493,14 @@
             {
               'action_name': 'Make Empty Paks',
               'inputs': [
-                'tools/posix/make_locale_paks.sh',
+                'tools/make_locale_paks.py',
               ],
               'outputs': [
                 '<(PRODUCT_DIR)/locales'
               ],
               'action': [
-                'tools/posix/make_locale_paks.sh',
+                'python',
+                'tools/make_locale_paks.py',
                 '<(PRODUCT_DIR)',
                 '<@(locales)',
               ],
@@ -752,37 +510,5 @@
         },
       ],
     }],  # OS!="mac"
-    ['OS=="win"', {
-      'targets': [
-        {
-          'target_name': 'generate_node_lib',
-          'type': 'none',
-          'dependencies': [
-            '<(project_name)',
-          ],
-          'actions': [
-            {
-              'action_name': 'Create node.lib',
-              'inputs': [
-                '<(PRODUCT_DIR)/atom.lib',
-                '<(libchromiumcontent_library_dir)/chromiumcontent.dll.lib',
-              ],
-              'outputs': [
-                '<(PRODUCT_DIR)/node.lib',
-              ],
-              'action': [
-                'lib.exe',
-                '/nologo',
-                # We can't use <(_outputs) here because that escapes the
-                # backslash in the path, which confuses lib.exe.
-                '/OUT:<(PRODUCT_DIR)\\node.lib',
-                '<@(_inputs)',
-              ],
-              'msvs_cygwin_shell': 0,
-            },
-          ],
-        },  # target generate_node_lib
-      ],
-    }],  # OS==win
   ],
 }

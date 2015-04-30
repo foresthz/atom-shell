@@ -1,4 +1,4 @@
-// Copyright (c) 2013 GitHub, Inc. All rights reserved.
+// Copyright (c) 2013 GitHub, Inc.
 // Use of this source code is governed by the MIT license that can be
 // found in the LICENSE file.
 
@@ -7,19 +7,19 @@
 #include "atom/common/native_mate_converters/value_converter.h"
 #include "content/public/renderer/render_view.h"
 #include "native_mate/dictionary.h"
-#include "third_party/WebKit/public/web/WebFrame.h"
+#include "third_party/WebKit/public/web/WebLocalFrame.h"
 #include "third_party/WebKit/public/web/WebView.h"
 
 #include "atom/common/node_includes.h"
 
 using content::RenderView;
-using WebKit::WebFrame;
-using WebKit::WebView;
+using blink::WebLocalFrame;
+using blink::WebView;
 
 namespace {
 
 RenderView* GetCurrentRenderView() {
-  WebFrame* frame = WebFrame::frameForCurrentContext();
+  WebLocalFrame* frame = WebLocalFrame::frameForCurrentContext();
   if (!frame)
     return NULL;
 
@@ -30,7 +30,7 @@ RenderView* GetCurrentRenderView() {
   return RenderView::FromWebView(view);
 }
 
-void Send(const string16& channel, const base::ListValue& arguments) {
+void Send(const base::string16& channel, const base::ListValue& arguments) {
   RenderView* render_view = GetCurrentRenderView();
   if (render_view == NULL)
     return;
@@ -42,8 +42,9 @@ void Send(const string16& channel, const base::ListValue& arguments) {
     node::ThrowError("Unable to send AtomViewHostMsg_Message");
 }
 
-string16 SendSync(const string16& channel, const base::ListValue& arguments) {
-  string16 json;
+base::string16 SendSync(const base::string16& channel,
+                        const base::ListValue& arguments) {
+  base::string16 json;
 
   RenderView* render_view = GetCurrentRenderView();
   if (render_view == NULL)
@@ -61,12 +62,13 @@ string16 SendSync(const string16& channel, const base::ListValue& arguments) {
   return json;
 }
 
-void Initialize(v8::Handle<v8::Object> exports) {
-  mate::Dictionary dict(v8::Isolate::GetCurrent(), exports);
+void Initialize(v8::Handle<v8::Object> exports, v8::Handle<v8::Value> unused,
+                v8::Handle<v8::Context> context, void* priv) {
+  mate::Dictionary dict(context->GetIsolate(), exports);
   dict.SetMethod("send", &Send);
   dict.SetMethod("sendSync", &SendSync);
 }
 
 }  // namespace
 
-NODE_MODULE(atom_renderer_ipc, Initialize)
+NODE_MODULE_CONTEXT_AWARE_BUILTIN(atom_renderer_ipc, Initialize)

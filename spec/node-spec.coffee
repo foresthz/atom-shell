@@ -2,16 +2,26 @@ assert        = require 'assert'
 child_process = require 'child_process'
 fs            = require 'fs'
 path          = require 'path'
+os            = require 'os'
+remote        = require 'remote'
 
 describe 'node feature', ->
-  describe 'child_process', ->
-    fixtures = path.join __dirname, 'fixtures'
+  fixtures = path.join __dirname, 'fixtures'
 
+  describe 'child_process', ->
     describe 'child_process.fork', ->
       it 'works in current process', (done) ->
         child = child_process.fork path.join(fixtures, 'module', 'ping.js')
         child.on 'message', (msg) ->
           assert.equal msg, 'message'
+          done()
+        child.send 'message'
+
+      it 'preserves args', (done) ->
+        args = ['--expose_gc', '-test', '1']
+        child = child_process.fork path.join(fixtures, 'module', 'process_args.js'), args
+        child.on 'message', (msg) ->
+          assert.deepEqual args, msg.slice(2)
           done()
         child.send 'message'
 
@@ -31,15 +41,25 @@ describe 'node feature', ->
           done()
         child.send 'message'
 
+      it 'works in browser process', (done) ->
+        fork = remote.require('child_process').fork
+        child = fork path.join(fixtures, 'module', 'ping.js')
+        child.on 'message', (msg) ->
+          assert.equal msg, 'message'
+          done()
+        child.send 'message'
+
+      it 'has String::localeCompare working in script', (done) ->
+        child = child_process.fork path.join(fixtures, 'module', 'locale-compare.js')
+        child.on 'message', (msg) ->
+          assert.deepEqual msg, [0, -1, 1]
+          done()
+        child.send 'message'
+
   describe 'contexts', ->
     describe 'setTimeout in fs callback', ->
       it 'does not crash', (done) ->
         fs.readFile __filename, ->
-          setTimeout done, 0
-
-    describe 'setTimeout in pure uv callback', ->
-      it 'does not crash', (done) ->
-        process.scheduleCallback ->
           setTimeout done, 0
 
     describe 'throw error in node context', ->
@@ -54,6 +74,17 @@ describe 'node feature', ->
           done()
         fs.readFile __filename, ->
           throw error
+
+    describe 'setTimeout called under Chromium event loop in browser process', ->
+      it 'can be scheduled in time', (done) ->
+        remote.getGlobal('setTimeout')(done, 0)
+
+    describe 'setInterval called under Chromium event loop in browser process', ->
+      it 'can be scheduled in time', (done) ->
+        clear = ->
+          remote.getGlobal('clearInterval')(interval)
+          done()
+        interval = remote.getGlobal('setInterval')(clear, 10)
 
   describe 'message loop', ->
     describe 'process.nextTick', ->
@@ -73,3 +104,25 @@ describe 'node feature', ->
         setImmediate ->
           setImmediate ->
             setImmediate done
+
+  describe 'net.connect', ->
+    return unless process.platform is 'darwin'
+
+    it 'emit error when connect to a socket path without listeners', (done) ->
+      socketPath = path.join os.tmpdir(), 'atom-shell-test.sock'
+      script = path.join(fixtures, 'module', 'create_socket.js')
+      child = child_process.fork script, [socketPath]
+      child.on 'exit', (code) ->
+        assert.equal code, 0
+        client = require('net').connect socketPath
+        client.on 'error', (error) ->
+          assert.equal error.code, 'ECONNREFUSED'
+          done()
+
+  describe 'Buffer', ->
+    it 'can be created from WebKit external string', ->
+      p = document.createElement 'p'
+      p.innerText = '闲云潭影日悠悠，物换星移几度秋'
+      b = new Buffer(p.innerText)
+      assert.equal b.toString(), '闲云潭影日悠悠，物换星移几度秋'
+      assert.equal Buffer.byteLength(p.innerText), 45

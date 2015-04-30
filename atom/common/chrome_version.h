@@ -1,4 +1,4 @@
-// Copyright (c) 2014 GitHub, Inc. All rights reserved.
+// Copyright (c) 2014 GitHub, Inc.
 // Use of this source code is governed by the MIT license that can be
 // found in the LICENSE file.
 
@@ -8,7 +8,7 @@
 #ifndef ATOM_COMMON_CHROME_VERSION_H_
 #define ATOM_COMMON_CHROME_VERSION_H_
 
-#define CHROME_VERSION_STRING "31.0.1650.57"
+#define CHROME_VERSION_STRING "42.0.2311.107"
 #define CHROME_VERSION "v" CHROME_VERSION_STRING
 
 #endif  // ATOM_COMMON_CHROME_VERSION_H_

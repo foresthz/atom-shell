@@ -1,9 +1,16 @@
 # auto-updater
 
-**This module has only been implemented for Mac OS X.**
+**This module has only been implemented for OS X.**
+
+Check out [atom/grunt-atom-shell-installer](https://github.com/atom/grunt-atom-shell-installer)
+for building a Windows installer for your app.
 
 The `auto-updater` module is a simple wrap around the
 [Squirrel.Mac](https://github.com/Squirrel/Squirrel.Mac) framework.
+
+Squirrel.Mac requires that your `.app` folder is signed using the
+[codesign](https://developer.apple.com/library/mac/documentation/Darwin/Reference/ManPages/man1/codesign.1.html)
+utility for updates to be installed.
 
 ## Squirrel
 
@@ -46,7 +53,7 @@ server that you are requesting updates from. A common approach is to use query
 parameters, like this:
 
 ```javascript
-// On browser side
+// On the main process
 var app = require('app');
 var autoUpdater = require('auto-updater');
 autoUpdater.setFeedUrl('http://mycompany.com/myapp/latest?version=' + app.getVersion());
@@ -90,6 +97,13 @@ will be added to the `Accept` header so that your server can return the
 appropriate format.
 
 `pub_date` if present must be formatted according to ISO 8601.
+
+## Event: error
+
+* `event` Event
+* `message` String
+
+Emitted when there is an error updating.
 
 ## Event: checking-for-update
 
